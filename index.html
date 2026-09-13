@@ -22,6 +22,7 @@
         <span class="suit-icon red">♥</span>
       </div>
       <div class="header-actions">
+        <button id="bribe-menu-btn" class="icon-btn cheat-btn" title="Bribe the Dealer for cards or peek vision">🤫 Bribe</button>
         <button id="sound-btn" class="icon-btn" title="Toggle Sound">🔊</button>
         <button id="log-toggle-btn" class="icon-btn" title="Open Chat & History">💬 Chat</button>
         <button id="reset-game-btn" class="icon-btn reset-btn" title="Reset everything: chips, bot intelligence, and table state">🔄 Reset All</button>
@@ -142,6 +143,7 @@
       <div class="action-panel">
         <div class="start-controls" id="start-controls">
           <button id="start-btn" class="btn primary-btn large-btn">Start Hand</button>
+          <button id="start-bribe-btn" class="btn secondary-btn large-btn cheat-action-btn" title="Bribe the Dealer">🤫 Bribe Dealer</button>
           <button id="reset-everything-btn" class="btn secondary-btn large-btn reset-everything-btn" title="Reset everything: chips, bot intelligence, and table state">🔄 Reset Everything</button>
         </div>
 
@@ -153,6 +155,7 @@
               <button class="quick-bet-btn" data-type="half">1/2 Pot</button>
               <button class="quick-bet-btn" data-type="pot">Pot</button>
               <button class="quick-bet-btn" data-type="allin">All-In</button>
+              <button id="bet-bribe-btn" type="button" class="quick-bet-btn bribe-quick-btn" title="Bribe the Dealer">🤫 Bribe</button>
             </div>
             <div class="slider-wrapper">
               <input type="range" id="raise-slider" min="20" max="1000" step="10" value="40" />
@@ -184,6 +187,106 @@
         </form>
       </div>
     </footer>
+
+    <!-- Bribe Dealer Modal -->
+    <div class="modal-backdrop" id="bribe-modal" style="display: none;">
+      <div class="bribe-modal-dialog">
+        <div class="bribe-modal-header">
+          <div class="bribe-modal-title">
+            <span class="bribe-icon">🤫</span>
+            <h3>Bribe the Dealer</h3>
+          </div>
+          <div class="bribe-player-chips" id="bribe-chips-display">💰 Chips: $1,000</div>
+          <button id="close-bribe-btn" class="close-btn" type="button" aria-label="Close bribe menu">&times;</button>
+        </div>
+
+        <div class="bribe-modal-body">
+          <div class="bribe-feedback-msg" id="bribe-feedback-msg" style="display: none;"></div>
+
+          <!-- Item 1: Peek at Opponents' Cards -->
+          <div class="bribe-card-section">
+            <div class="bribe-item-header">
+              <div class="bribe-item-info">
+                <span class="bribe-item-title">👁️ Peek Opponents' Cards</span>
+                <span class="bribe-item-desc">Discreetly reveals all opponents' hole cards face-up for the remainder of this hand.</span>
+              </div>
+              <div class="bribe-item-cost">$50</div>
+            </div>
+            <button id="buy-peek-btn" class="btn bribe-action-btn peek-buy-btn" type="button">
+              <span>👁️ Buy Card Peek ($50)</span>
+            </button>
+          </div>
+
+          <!-- Item 2: Auto-Pick Best Next Card -->
+          <div class="bribe-card-section">
+            <div class="bribe-item-header">
+              <div class="bribe-item-info">
+                <span class="bribe-item-title">✨ Guarantee Best Next Card</span>
+                <span class="bribe-item-desc">Dealer calculates and deals the optimal card that maximizes your winning hand.</span>
+              </div>
+              <div class="bribe-item-cost">$150</div>
+            </div>
+            <button id="buy-best-card-btn" class="btn bribe-action-btn best-card-btn" type="button">
+              <span>✨ Deal My Best Card ($150)</span>
+            </button>
+          </div>
+
+          <!-- Item 3: Custom Specific Card Bribe -->
+          <div class="bribe-card-section">
+            <div class="bribe-item-header">
+              <div class="bribe-item-info">
+                <span class="bribe-item-title">🎯 Bribe for Specific Card</span>
+                <span class="bribe-item-desc">Choose any exact card to be dealt next on the board (or swap the River).</span>
+              </div>
+              <div class="bribe-item-cost">$100</div>
+            </div>
+
+            <!-- Card Picker UI -->
+            <div class="card-picker-container">
+              <div class="picker-row">
+                <div class="picker-label">Choose Rank:</div>
+                <div class="rank-selector" id="bribe-rank-selector">
+                  <button type="button" class="rank-chip" data-rank="2">2</button>
+                  <button type="button" class="rank-chip" data-rank="3">3</button>
+                  <button type="button" class="rank-chip" data-rank="4">4</button>
+                  <button type="button" class="rank-chip" data-rank="5">5</button>
+                  <button type="button" class="rank-chip" data-rank="6">6</button>
+                  <button type="button" class="rank-chip" data-rank="7">7</button>
+                  <button type="button" class="rank-chip" data-rank="8">8</button>
+                  <button type="button" class="rank-chip" data-rank="9">9</button>
+                  <button type="button" class="rank-chip" data-rank="10">10</button>
+                  <button type="button" class="rank-chip" data-rank="J">J</button>
+                  <button type="button" class="rank-chip" data-rank="Q">Q</button>
+                  <button type="button" class="rank-chip" data-rank="K">K</button>
+                  <button type="button" class="rank-chip active" data-rank="A">A</button>
+                </div>
+              </div>
+
+              <div class="picker-row">
+                <div class="picker-label">Choose Suit:</div>
+                <div class="suit-selector" id="bribe-suit-selector">
+                  <button type="button" class="suit-chip active" data-suit="♠" data-color="black">♠ Spades</button>
+                  <button type="button" class="suit-chip red" data-suit="♥" data-color="red">♥ Hearts</button>
+                  <button type="button" class="suit-chip red" data-suit="♦" data-color="red">♦ Diamonds</button>
+                  <button type="button" class="suit-chip" data-suit="♣" data-color="black">♣ Clubs</button>
+                </div>
+              </div>
+
+              <!-- Card Preview and Confirm Button -->
+              <div class="bribe-confirm-row">
+                <div class="card-preview-mini" id="bribe-card-preview">
+                  <span class="preview-rank" id="preview-rank-val">A</span>
+                  <span class="preview-suit" id="preview-suit-val">♠</span>
+                </div>
+                <button id="buy-specific-card-btn" class="btn bribe-action-btn specific-btn" type="button">
+                  <span>🤝 Deal <strong id="bribe-confirm-card-name">A♠</strong> ($100)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

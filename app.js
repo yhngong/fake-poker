@@ -455,6 +455,10 @@ class PokerGame {
     this.forcedCardQueue = [];
     this.burnedCards = [];
     this.peekCheat = false;
+    this.peekBoughtForHand = false;
+    this.selectedBribeRank = 'A';
+    this.selectedBribeSuit = '♠';
+    this.selectedBribeColor = 'black';
 
     this.bindDOM();
   }
@@ -481,6 +485,24 @@ class PokerGame {
     this.closeLogBtn = document.getElementById('close-log-btn');
     this.liveTicker = document.getElementById('live-ticker');
     this.tickerText = document.getElementById('ticker-text');
+
+    // Bribe Modal & Trigger Buttons
+    this.bribeModal = document.getElementById('bribe-modal');
+    this.closeBribeBtn = document.getElementById('close-bribe-btn');
+    this.bribeMenuBtn = document.getElementById('bribe-menu-btn');
+    this.startBribeBtn = document.getElementById('start-bribe-btn');
+    this.betBribeBtn = document.getElementById('bet-bribe-btn');
+    this.bribeChipsDisplay = document.getElementById('bribe-chips-display');
+    this.bribeFeedbackMsg = document.getElementById('bribe-feedback-msg');
+    this.buyPeekBtn = document.getElementById('buy-peek-btn');
+    this.buyBestCardBtn = document.getElementById('buy-best-card-btn');
+    this.buySpecificCardBtn = document.getElementById('buy-specific-card-btn');
+    this.bribeRankSelector = document.getElementById('bribe-rank-selector');
+    this.bribeSuitSelector = document.getElementById('bribe-suit-selector');
+    this.bribeCardPreview = document.getElementById('bribe-card-preview');
+    this.previewRankVal = document.getElementById('preview-rank-val');
+    this.previewSuitVal = document.getElementById('preview-suit-val');
+    this.bribeConfirmCardName = document.getElementById('bribe-confirm-card-name');
 
     // Chat & River cheat elements
     this.riggedRiverIndicator = document.getElementById('rigged-river-indicator');
@@ -517,6 +539,64 @@ class PokerGame {
     }
     if (this.resetAllAltBtn) {
       this.resetAllAltBtn.addEventListener('click', handleResetAll);
+    }
+
+    // Bribe modal open/close triggers
+    if (this.bribeMenuBtn) {
+      this.bribeMenuBtn.addEventListener('click', () => this.openBribeModal());
+    }
+    if (this.startBribeBtn) {
+      this.startBribeBtn.addEventListener('click', () => this.openBribeModal());
+    }
+    if (this.betBribeBtn) {
+      this.betBribeBtn.addEventListener('click', () => this.openBribeModal());
+    }
+    if (this.closeBribeBtn) {
+      this.closeBribeBtn.addEventListener('click', () => this.closeBribeModal());
+    }
+    if (this.bribeModal) {
+      this.bribeModal.addEventListener('click', (e) => {
+        if (e.target === this.bribeModal) this.closeBribeModal();
+      });
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.bribeModal && this.bribeModal.style.display !== 'none') {
+        this.closeBribeModal();
+      }
+    });
+
+    // Bribe buy buttons
+    if (this.buyPeekBtn) {
+      this.buyPeekBtn.addEventListener('click', () => this.bribeBuyPeek());
+    }
+    if (this.buyBestCardBtn) {
+      this.buyBestCardBtn.addEventListener('click', () => this.bribeBuyBestCard());
+    }
+    if (this.buySpecificCardBtn) {
+      this.buySpecificCardBtn.addEventListener('click', () => this.bribeBuySpecificCard());
+    }
+
+    // Card Picker selectors
+    if (this.bribeRankSelector) {
+      this.bribeRankSelector.addEventListener('click', (e) => {
+        const btn = e.target.closest('.rank-chip');
+        if (!btn) return;
+        this.bribeRankSelector.querySelectorAll('.rank-chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        this.selectedBribeRank = btn.dataset.rank;
+        this.updateBribePreview();
+      });
+    }
+    if (this.bribeSuitSelector) {
+      this.bribeSuitSelector.addEventListener('click', (e) => {
+        const btn = e.target.closest('.suit-chip');
+        if (!btn) return;
+        this.bribeSuitSelector.querySelectorAll('.suit-chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        this.selectedBribeSuit = btn.dataset.suit;
+        this.selectedBribeColor = btn.dataset.color || 'black';
+        this.updateBribePreview();
+      });
     }
 
     // River cheat indicator & Chat events
@@ -675,6 +755,13 @@ class PokerGame {
         this.removeCardFromDeck(forcedCard);
       }
     }
+
+    // If card peek was bought for this hand, keep it; otherwise reset for fair play
+    if (!this.peekBoughtForHand) {
+      this.peekCheat = false;
+    }
+    this.peekBoughtForHand = false; // consumed for this hand
+    this.updatePeekIndicator();
 
     this.phase = 'PRE-FLOP';
     this.updateUI(true); // Clean board slots & dealer badge
@@ -1395,8 +1482,10 @@ class PokerGame {
     this.forcedCardQueue = [];
     this.burnedCards = [];
     this.peekCheat = false;
+    this.peekBoughtForHand = false;
     this.updateCheatIndicator();
     this.updatePeekIndicator();
+    this.closeBribeModal();
   }
 
   // --- TABLE CHAT & CHEAT ENGINE (##deal AS / ##force AS) ---
@@ -1571,19 +1660,19 @@ class PokerGame {
     const action = parts[0].toLowerCase();
     const rest = parts.slice(1).join(' ').trim();
 
+    if (action === 'bribe' || action === 'shop' || action === 'dealer') {
+      this.openBribeModal();
+      return;
+    }
+
     if (action === 'deal' || action === 'force') {
       if (!rest) {
-        this.log('Usage: ##deal <Card> (e.g. ##deal AS, ##deal 10H, ##deal KD) or ##deal best', 'system');
+        this.log('Usage: ##deal <Card> (e.g. ##deal AS, ##deal 10H) - Costs $100 chips, or ##deal best - Costs $150 chips', 'system');
         return;
       }
 
       if (rest.toLowerCase() === 'best' || rest.toLowerCase() === 'auto') {
-        const best = this.findBestNextCardForHuman();
-        if (!best || !best.card) {
-          this.log('Cannot auto-detect best card: Start a hand and deal cards first!', 'system');
-          return;
-        }
-        this.applyForcedCards([best.card], `✨ Auto-best: ${best.eval ? best.eval.name : ''}`);
+        this.bribeBuyBestCard();
         return;
       }
 
@@ -1593,48 +1682,77 @@ class PokerGame {
         return;
       }
 
-      this.applyForcedCards(cards);
+      const human = this.players[0];
+      const COST = 100;
+      if (human && human.chips < COST) {
+        this.log(`❌ Not enough chips! Bribing the dealer for a card costs $${COST} (You have $${human.chips}).`, 'system');
+        return;
+      }
+
+      const targetCard = cards[0];
+      const isRiver = this.communityCards.length >= 5;
+      const check = this.isCardAlreadyPlayed(targetCard, isRiver);
+      if (check.played) {
+        this.log(`❌ ${targetCard.rank}${targetCard.suit} cannot be forced: It is already in ${check.location}!`, 'system');
+        return;
+      }
+
+      human.chips -= COST;
+      if (human.chips === 0 && !human.folded && this.phase !== 'IDLE') human.allIn = true;
+      this.updateUI(false);
+      sounds.playChip();
+      if (isRiver) {
+        this.swapRiverCard(targetCard, `🤝 Bribed: $${COST}`);
+      } else {
+        this.applyForcedCards([targetCard], `🤝 Bribed: $${COST}`);
+      }
+      this.log(`🤫 You bribed the dealer $100! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'winner');
     } else if (['peek', 'see', 'xray', 'x-ray', 'spy', 'reveal', 'cards', 'hands', 'show', 'god', 'godmode', 'botcards', 'look'].includes(action)) {
       const sub = rest.toLowerCase();
       if (sub === 'off' || sub === 'disable' || sub === 'hide' || sub === 'false') {
         this.setPeekCheat(false);
-      } else if (sub === 'on' || sub === 'enable' || sub === 'true') {
-        this.setPeekCheat(true);
-      } else if (sub === 'toggle') {
-        this.togglePeekCheat();
-      } else if (sub.length > 0 && this.players.some(p => !p.isHuman && p.name.toLowerCase() === sub)) {
-        const matchedBot = this.players.find(p => !p.isHuman && p.name.toLowerCase() === sub);
-        if (!this.peekCheat) {
-          this.setPeekCheat(true, true);
-        }
-        if (matchedBot.holeCards && matchedBot.holeCards.length > 0) {
-          const cardsStr = matchedBot.holeCards.map(c => `${c.rank}${c.suit}`).join(' ');
-          let handStr = '';
-          if (this.communityCards.length >= 3) {
-            const evalRes = HandEvaluator.evaluate7([...matchedBot.holeCards, ...this.communityCards]);
-            handStr = ` (${evalRes.name})`;
-          }
-          this.log(`👁️ ${matchedBot.name}'s Cards: ${cardsStr}${matchedBot.folded ? ' [Folded]' : ''}${handStr}`, 'winner');
-        } else {
-          this.log(`👁️ ${matchedBot.name} has no cards dealt yet.`, 'system');
-        }
+      } else if (this.peekCheat) {
+        this.log('ℹ️ X-Ray Vision is already active for this hand!', 'system');
+        this.logOpponentHands();
       } else {
-        // Toggle peek cheat
-        this.togglePeekCheat();
+        // Buying peek costs $50
+        this.bribeBuyPeek();
       }
     } else if (action === 'unpeek' || action === 'hide') {
       this.setPeekCheat(false);
     } else if (action === 'clear' || action === 'unforce' || action === 'fair' || action === 'reset') {
       this.clearCheat();
     } else if (action === 'help') {
-      this.log('🃏 Commands:\n• ##deal AS (Deals Ace of Spades as next card)\n• ##deal 10H (Deals 10 of Hearts as next card)\n• ##deal best (Auto-picks best winning next card)\n• ##peek (Toggle seeing all opponents\' cards)\n• ##peek on / ##peek off (Turn reveal on/off)\n• ##peek Bob (Peek at Bob\'s cards)\n• ##clear (Cancel cheats and play fair)', 'system');
+      this.log('🃏 Commands & Bribes:\n• Tap "🤫 Bribes" button or type ##bribe to open the Dealer Bribe menu\n• ##deal AS (Bribe $100 for Ace of Spades)\n• ##deal best (Bribe $150 for auto-best card)\n• ##peek (Bribe $50 to see opponents\' cards)\n• ##clear (Cancel pending forced cards)', 'system');
     } else {
       // Check if user typed card shorthand directly e.g. ##AS or ##10H
       const directCards = this.parseCheatCards(clean);
       if (directCards.length > 0) {
-        this.applyForcedCards(directCards);
+        const human = this.players[0];
+        const COST = 100;
+        if (human && human.chips < COST) {
+          this.log(`❌ Not enough chips! Bribing for a card costs $${COST} (You have $${human.chips}).`, 'system');
+          return;
+        }
+        const targetCard = directCards[0];
+        const isRiver = this.communityCards.length >= 5;
+        const check = this.isCardAlreadyPlayed(targetCard, isRiver);
+        if (check.played) {
+          this.log(`❌ ${targetCard.rank}${targetCard.suit} cannot be forced: It is already in ${check.location}!`, 'system');
+          return;
+        }
+        human.chips -= COST;
+        if (human.chips === 0 && !human.folded && this.phase !== 'IDLE') human.allIn = true;
+        this.updateUI(false);
+        sounds.playChip();
+        if (isRiver) {
+          this.swapRiverCard(targetCard, `🤝 Bribed: $${COST}`);
+        } else {
+          this.applyForcedCards([targetCard], `🤝 Bribed: $${COST}`);
+        }
+        this.log(`🤫 You bribed the dealer $100! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'winner');
       } else {
-        this.log(`Unknown command "${rawCmd}". Type ##help, ##deal AS, or ##peek.`, 'system');
+        this.log(`Unknown command "${rawCmd}". Tap "🤫 Bribes" or type ##help.`, 'system');
       }
     }
   }
@@ -1841,6 +1959,205 @@ class PokerGame {
     } else {
       this.riggedRiverIndicator.style.display = 'none';
     }
+  }
+
+  updateBribePreview() {
+    if (this.previewRankVal) this.previewRankVal.innerText = this.selectedBribeRank;
+    if (this.previewSuitVal) this.previewSuitVal.innerText = this.selectedBribeSuit;
+    if (this.bribeConfirmCardName) {
+      this.bribeConfirmCardName.innerText = `${this.selectedBribeRank}${this.selectedBribeSuit}`;
+    }
+    if (this.bribeCardPreview) {
+      if (this.selectedBribeColor === 'red') {
+        this.bribeCardPreview.classList.add('red');
+      } else {
+        this.bribeCardPreview.classList.remove('red');
+      }
+    }
+  }
+
+  openBribeModal() {
+    if (!this.bribeModal) return;
+    const human = this.players[0];
+    if (this.bribeChipsDisplay && human) {
+      this.bribeChipsDisplay.innerText = `💰 Chips: $${human.chips}`;
+    }
+    if (this.bribeFeedbackMsg) {
+      this.bribeFeedbackMsg.style.display = 'none';
+    }
+
+    // Update peek button status
+    if (this.buyPeekBtn) {
+      if (this.peekCheat) {
+        this.buyPeekBtn.disabled = true;
+        this.buyPeekBtn.classList.add('active-bought');
+        this.buyPeekBtn.innerHTML = '<span>✓ Peek Vision Active for this Hand</span>';
+      } else if (human && human.chips < 50) {
+        this.buyPeekBtn.disabled = true;
+        this.buyPeekBtn.classList.remove('active-bought');
+        this.buyPeekBtn.innerHTML = '<span>👁️ Buy Card Peek ($50) — Need $50</span>';
+      } else {
+        this.buyPeekBtn.disabled = false;
+        this.buyPeekBtn.classList.remove('active-bought');
+        this.buyPeekBtn.innerHTML = '<span>👁️ Buy Card Peek ($50)</span>';
+      }
+    }
+
+    // Update best card button status
+    if (this.buyBestCardBtn) {
+      if (human && human.chips < 150) {
+        this.buyBestCardBtn.disabled = true;
+        this.buyBestCardBtn.innerHTML = '<span>✨ Deal Best Card ($150) — Need $150</span>';
+      } else {
+        this.buyBestCardBtn.disabled = false;
+        this.buyBestCardBtn.innerHTML = '<span>✨ Deal My Best Card ($150)</span>';
+      }
+    }
+
+    // Update specific card button status
+    if (this.buySpecificCardBtn) {
+      if (human && human.chips < 100) {
+        this.buySpecificCardBtn.disabled = true;
+        this.buySpecificCardBtn.innerHTML = `<span>🤝 Deal <strong>${this.selectedBribeRank}${this.selectedBribeSuit}</strong> ($100) — Need $100</span>`;
+      } else {
+        this.buySpecificCardBtn.disabled = false;
+        this.buySpecificCardBtn.innerHTML = `<span>🤝 Deal <strong>${this.selectedBribeRank}${this.selectedBribeSuit}</strong> ($100)</span>`;
+      }
+    }
+
+    this.updateBribePreview();
+    this.bribeModal.style.display = 'flex';
+  }
+
+  closeBribeModal() {
+    if (this.bribeModal) {
+      this.bribeModal.style.display = 'none';
+    }
+  }
+
+  showBribeFeedback(msg, type = 'success') {
+    if (!this.bribeFeedbackMsg) return;
+    this.bribeFeedbackMsg.className = `bribe-feedback-msg ${type}`;
+    this.bribeFeedbackMsg.innerText = msg;
+    this.bribeFeedbackMsg.style.display = 'block';
+    const human = this.players[0];
+    if (this.bribeChipsDisplay && human) {
+      this.bribeChipsDisplay.innerText = `💰 Chips: $${human.chips}`;
+    }
+  }
+
+  bribeBuyPeek() {
+    const human = this.players[0];
+    if (!human) return;
+    const COST = 50;
+
+    if (this.peekCheat) {
+      this.showBribeFeedback('Peek vision is already active for this hand!', 'success');
+      return;
+    }
+
+    if (human.chips < COST) {
+      this.showBribeFeedback(`Not enough chips! Card peek costs $${COST}. You have $${human.chips}.`, 'error');
+      return;
+    }
+
+    human.chips -= COST;
+    if (human.chips === 0 && !human.folded && this.phase !== 'IDLE') {
+      human.allIn = true;
+    }
+    this.peekBoughtForHand = true;
+    this.setPeekCheat(true);
+    this.updateUI(false);
+    sounds.playChip();
+
+    this.showBribeFeedback('🤫 Dealer slipped $50! Opponents\' cards are revealed.', 'success');
+    if (this.buyPeekBtn) {
+      this.buyPeekBtn.disabled = true;
+      this.buyPeekBtn.classList.add('active-bought');
+      this.buyPeekBtn.innerHTML = '<span>✓ Peek Vision Active for this Hand</span>';
+    }
+    this.log(`🤫 You bribed the dealer with $50 to peek at all opponents' cards!`, 'winner');
+  }
+
+  bribeBuyBestCard() {
+    const human = this.players[0];
+    if (!human) return;
+    const COST = 150;
+
+    if (human.chips < COST) {
+      this.showBribeFeedback(`Not enough chips! Best card bribe costs $${COST}. You have $${human.chips}.`, 'error');
+      return;
+    }
+
+    const best = this.findBestNextCardForHuman();
+    if (!best || !best.card) {
+      this.showBribeFeedback('Start a hand first so the dealer knows your winning cards!', 'error');
+      return;
+    }
+
+    human.chips -= COST;
+    if (human.chips === 0 && !human.folded && this.phase !== 'IDLE') {
+      human.allIn = true;
+    }
+    this.updateUI(false);
+    sounds.playChip();
+
+    this.applyForcedCards([best.card], `✨ Bribed: $${COST}`);
+    this.showBribeFeedback(`🤫 Dealer took $150! Guaranteed ${best.card.rank}${best.card.suit} (${best.eval.name}) next!`, 'success');
+    this.log(`🤫 You bribed the dealer $150 for your best card (${best.card.rank}${best.card.suit} - ${best.eval.name})!`, 'winner');
+
+    setTimeout(() => {
+      this.closeBribeModal();
+    }, 850);
+  }
+
+  bribeBuySpecificCard() {
+    const human = this.players[0];
+    if (!human) return;
+    const COST = 100;
+
+    if (human.chips < COST) {
+      this.showBribeFeedback(`Not enough chips! Bribing for a card costs $${COST}. You have $${human.chips}.`, 'error');
+      return;
+    }
+
+    const targetCard = this.parseCheatCard(`${this.selectedBribeRank}${this.selectedBribeSuit}`);
+    if (!targetCard) {
+      this.showBribeFeedback('Invalid card selection.', 'error');
+      return;
+    }
+
+    const isRiver = this.communityCards.length >= 5;
+    if (isRiver && this.communityCards[4] && this.communityCards[4].val === targetCard.val && this.communityCards[4].suit === targetCard.suit) {
+      this.showBribeFeedback(`ℹ️ ${targetCard.rank}${targetCard.suit} is already the River card!`, 'error');
+      return;
+    }
+
+    const check = this.isCardAlreadyPlayed(targetCard, isRiver);
+    if (check.played) {
+      this.showBribeFeedback(`❌ ${targetCard.rank}${targetCard.suit} cannot be dealt: Already in ${check.location}!`, 'error');
+      return;
+    }
+
+    human.chips -= COST;
+    if (human.chips === 0 && !human.folded && this.phase !== 'IDLE') {
+      human.allIn = true;
+    }
+    this.updateUI(false);
+    sounds.playChip();
+
+    if (isRiver) {
+      this.swapRiverCard(targetCard, `🤝 Bribed: $${COST}`);
+    } else {
+      this.applyForcedCards([targetCard], `🤝 Bribed: $${COST}`);
+    }
+
+    this.showBribeFeedback(`🤫 Dealer took $100! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'success');
+    this.log(`🤫 You bribed the dealer $100 to deal ${targetCard.rank}${targetCard.suit}!`, 'winner');
+
+    setTimeout(() => {
+      this.closeBribeModal();
+    }, 850);
   }
 
   findBestNextCardForHuman() {

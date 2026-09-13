@@ -1018,6 +1018,359 @@ body {
 }
 
 /* =========================================================
+   BRIBE DEALER MODAL & CONTROLS
+   ========================================================= */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 12px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bribe-modal-dialog {
+  background: #0b1329;
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 24px rgba(245, 158, 11, 0.2);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.bribe-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.bribe-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bribe-modal-title h3 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.bribe-player-chips {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.bribe-modal-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bribe-feedback-msg {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.bribe-feedback-msg.success {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+
+.bribe-feedback-msg.error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+
+.bribe-card-section {
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.bribe-card-section:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.bribe-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bribe-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bribe-item-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #f8fafc;
+}
+
+.bribe-item-desc {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.bribe-item-cost {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.bribe-action-btn {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.bribe-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+}
+
+.bribe-action-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.bribe-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(40%);
+}
+
+.peek-buy-btn {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+.peek-buy-btn.active-bought {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
+}
+
+.best-card-btn {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+}
+
+.specific-btn {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35);
+}
+
+.card-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.picker-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+
+.rank-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rank-chip {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.76rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  min-width: 28px;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.rank-chip:hover {
+  background: #334155;
+  color: #fff;
+}
+
+.rank-chip.active {
+  background: var(--gold);
+  border-color: #fde047;
+  color: #111;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);
+}
+
+.suit-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.suit-chip {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.74rem;
+  padding: 5px 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: center;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.suit-chip.red {
+  color: #f87171;
+}
+
+.suit-chip:hover {
+  background: #334155;
+}
+
+.suit-chip.active {
+  border-color: var(--gold);
+  background: rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.35);
+}
+
+.bribe-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.card-preview-mini {
+  width: 36px;
+  height: 50px;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  font-weight: 800;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(245, 158, 11, 0.6);
+}
+
+.card-preview-mini.red {
+  color: #dc2626;
+}
+
+.card-preview-mini .preview-rank {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.card-preview-mini .preview-suit {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.bribe-quick-btn {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.bribe-quick-btn:hover, .bribe-quick-btn:active {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.7);
+  color: #fef3c7;
+}
+
+.cheat-action-btn {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+}
+
+.cheat-action-btn:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: rgba(245, 158, 11, 0.8);
+  color: #fff;
+}
+
+/* =========================================================
    MOBILE RESPONSIVE BREAKPOINTS
    ========================================================= */
 

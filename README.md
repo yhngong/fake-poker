@@ -20,17 +20,17 @@ Once enabled, your game will be live at:
 
 ---
 
-## 🤫 Secret Cheat Codes
+---
 
-Enter commands in the Table Chat (`💬 Chat`) starting with `##`, `#`, or `/`:
+## 🤫 Dealer Bribes & Under-the-Table Actions
 
-- `##peek` / `##xray`: Toggle **X-Ray Vision** to reveal all opponents' hole cards face-up with real-time hand evaluation.
-- `##peek on` / `##peek off`: Explicitly enable or disable card reveal mode.
-- `##peek Bob` / `##peek Alice` / `##peek Charlie`: Inspect a specific opponent's cards in chat.
-- `##deal AS` (or any card `##deal 10H`, `##deal KD`): Force the specified card as the next community card dealt.
-- `##deal best`: Auto-picks the optimal winning card for your hand.
-- `##clear`: Clear all cheats and resume fair play.
-- `##help`: Display the in-game command cheat sheet.
+Use the in-game **🤫 Bribes** buttons (in the top header, start bar, or betting bar) to open the interactive **Bribe the Dealer** dialog:
+
+- **👁️ Buy Card Peek ($50)**: Slipped under the table to reveal all opponents' hole cards face-up with real-time hand rankings for the duration of the hand.
+- **✨ Guarantee Best Next Card ($150)**: The dealer analyzes the board and forces the optimal card to maximize your winning hand.
+- **🎯 Bribe for Specific Card ($100)**: Interactive card picker (select Rank `2–A` and Suit `♠ ♥ ♦ ♣`) to force any exact card as the next community card (or swap the River).
+
+*(Commands in `💬 Chat` such as `##bribe`, `##peek`, `##deal AS`, and `##deal best` also trigger these bribes and deduct chips accordingly).*
 
 ---
 
