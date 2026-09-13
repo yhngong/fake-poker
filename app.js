@@ -376,6 +376,7 @@ class PokerGame {
     this.gameSessionId = 0;
     this.botTimeout = null;
     this.forcedCardQueue = [];
+    this.burnedCards = [];
 
     this.bindDOM();
   }
@@ -504,6 +505,16 @@ class PokerGame {
     }
   }
 
+  shuffleDeck() {
+    if (!this.deck || this.deck.length <= 1) return;
+    for (let pass = 0; pass < 3; pass++) {
+      for (let i = this.deck.length - 1; i > 0; i--) {
+        const j = getSecureRandomInt(i + 1);
+        [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+      }
+    }
+  }
+
   createDeck() {
     this.deck = [];
     for (const suit of SUITS) {
@@ -516,13 +527,7 @@ class PokerGame {
         });
       }
     }
-    // Cryptographically fair multi-pass Fisher-Yates shuffle
-    for (let pass = 0; pass < 3; pass++) {
-      for (let i = this.deck.length - 1; i > 0; i--) {
-        const j = getSecureRandomInt(i + 1);
-        [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
-      }
-    }
+    this.shuffleDeck();
   }
 
   startNewHand() {
@@ -544,6 +549,7 @@ class PokerGame {
 
     this.dealerIdx = (this.dealerIdx + 1) % this.players.length;
     this.createDeck();
+    this.burnedCards = [];
     this.communityCards = [];
     this.pot = 0;
     this.currentHighestBet = 0;
@@ -567,24 +573,24 @@ class PokerGame {
       p.holeCards = [];
     });
 
+    // If forced cards are already queued before hand starts, remove them immediately
+    // from this.deck so they cannot be dealt as hole cards or burned!
+    if (this.forcedCardQueue.length > 0) {
+      for (const forcedCard of this.forcedCardQueue) {
+        this.removeCardFromDeck(forcedCard);
+      }
+    }
+
     // Deal hole cards in authentic casino rotational order:
     // Round 1: 1 card to each player starting clockwise from Small Blind
     for (let i = 0; i < this.players.length; i++) {
       const pIdx = (this.dealerIdx + 1 + i) % this.players.length;
-      if (this.players[pIdx].isHuman && this.forcedCardQueue.length > 0) {
-        this.players[pIdx].holeCards.push(this.drawCard(true));
-      } else {
-        this.players[pIdx].holeCards.push(this.deck.pop());
-      }
+      this.players[pIdx].holeCards.push(this.deck.pop());
     }
     // Round 2: 2nd card to each player starting clockwise from Small Blind
     for (let i = 0; i < this.players.length; i++) {
       const pIdx = (this.dealerIdx + 1 + i) % this.players.length;
-      if (this.players[pIdx].isHuman && this.forcedCardQueue.length > 0) {
-        this.players[pIdx].holeCards.push(this.drawCard(true));
-      } else {
-        this.players[pIdx].holeCards.push(this.deck.pop());
-      }
+      this.players[pIdx].holeCards.push(this.deck.pop());
     }
 
     sounds.playCard();
@@ -1049,54 +1055,57 @@ class PokerGame {
 
     if (this.phase === 'PRE-FLOP') {
       this.phase = 'FLOP';
-      this.deck.pop(); // Burn card
+      const burn = this.deck.pop(); // Burn card
+      if (burn) this.burnedCards.push(burn);
       this.log('--- Dealing Flop ---', 'system');
       this.updateUI(false);
       await sleep(500);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 1
-      this.communityCards.push(this.drawCard());
+      this.communityCards.push(this.drawBoardCard('Flop'));
       sounds.playCard();
       this.updateUI(true);
       await sleep(400);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 2
-      this.communityCards.push(this.drawCard());
+      this.communityCards.push(this.drawBoardCard('Flop'));
       sounds.playCard();
       this.updateUI(true);
       await sleep(400);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 3
-      this.communityCards.push(this.drawCard());
+      this.communityCards.push(this.drawBoardCard('Flop'));
       sounds.playCard();
       this.updateUI(true);
       await sleep(750); // Pause to assess the full flop
       if (sessionId !== this.gameSessionId) return;
     } else if (this.phase === 'FLOP') {
       this.phase = 'TURN';
-      this.deck.pop(); // Burn card
+      const burn = this.deck.pop(); // Burn card
+      if (burn) this.burnedCards.push(burn);
       this.log('--- Dealing Turn ---', 'system');
       this.updateUI(false);
       await sleep(850); // Suspenseful pause before the Turn!
       if (sessionId !== this.gameSessionId) return;
 
-      this.communityCards.push(this.drawCard());
+      this.communityCards.push(this.drawBoardCard('Turn'));
       sounds.playCard();
       this.updateUI(true);
       await sleep(750);
       if (sessionId !== this.gameSessionId) return;
     } else if (this.phase === 'TURN') {
       this.phase = 'RIVER';
-      this.deck.pop(); // Burn card
+      const burn = this.deck.pop(); // Burn card
+      if (burn) this.burnedCards.push(burn);
       this.log('--- Dealing River ---', 'system');
       this.updateUI(false);
       await sleep(950); // Suspenseful pause before the River!
       if (sessionId !== this.gameSessionId) return;
 
-      this.communityCards.push(this.drawCard());
+      this.communityCards.push(this.drawBoardCard('River'));
       sounds.playCard();
       this.updateUI(true);
       await sleep(800);
@@ -1244,30 +1253,78 @@ class PokerGame {
 
     // 8. Clear cheat state
     this.forcedCardQueue = [];
+    this.burnedCards = [];
     this.updateCheatIndicator();
   }
 
   // --- TABLE CHAT & CHEAT ENGINE (##deal AS / ##force AS) ---
 
-  drawCard(isHoleCard = false) {
+  drawBoardCard(phaseName = 'Board') {
     if (this.forcedCardQueue.length > 0) {
       const targetCard = this.forcedCardQueue.shift();
       this.updateCheatIndicator();
-
-      const idx = this.deck.findIndex(c => c.suit === targetCard.suit && c.val === targetCard.val);
-      let card;
-      if (idx !== -1) {
-        card = this.deck.splice(idx, 1)[0];
-      } else {
-        card = { ...targetCard };
-      }
-
-      const dest = isHoleCard ? 'your hand' : 'the board';
-      this.log(`🤫 Next card dealt to ${dest}: ${card.rank}${card.suit} (Rigged)!`, 'winner');
-      return card;
+      this.removeCardFromDeck(targetCard);
+      this.log(`🤫 ${phaseName} card placed: ${targetCard.rank}${targetCard.suit} (Forced)!`, 'winner');
+      return targetCard;
     }
 
     return this.deck.pop();
+  }
+
+  drawCard(isHoleCard = false) {
+    return this.drawBoardCard('Board');
+  }
+
+  isCardAlreadyPlayed(card, excludeRiver = false) {
+    if (!card) return { played: false };
+
+    // Check all players' hole cards (both human and bots)
+    for (const p of this.players) {
+      if (p.holeCards && p.holeCards.some(c => c.val === card.val && c.suit === card.suit)) {
+        return { played: true, location: p.isHuman ? 'your hand' : `${p.name}'s hand` };
+      }
+    }
+
+    // Check community board cards
+    const boardToCheck = excludeRiver && this.communityCards.length >= 5
+      ? this.communityCards.slice(0, 4)
+      : this.communityCards;
+    if (boardToCheck && boardToCheck.some(c => c.val === card.val && c.suit === card.suit)) {
+      return { played: true, location: 'the board' };
+    }
+
+    // Check burned cards
+    if (this.burnedCards && this.burnedCards.some(c => c.val === card.val && c.suit === card.suit)) {
+      return { played: true, location: 'the burn pile' };
+    }
+
+    // Check if already queued to be dealt
+    if (this.forcedCardQueue && this.forcedCardQueue.some(c => c.val === card.val && c.suit === card.suit)) {
+      return { played: true, location: 'already queued to be dealt' };
+    }
+
+    return { played: false };
+  }
+
+  removeCardFromDeck(card) {
+    if (!this.deck || this.deck.length === 0 || !card) return null;
+    const idx = this.deck.findIndex(c => c.val === card.val && c.suit === card.suit);
+    if (idx !== -1) {
+      return this.deck.splice(idx, 1)[0];
+    }
+    return null;
+  }
+
+  returnQueueCardsToDeck() {
+    if (!this.forcedCardQueue || this.forcedCardQueue.length === 0) return;
+    for (const card of this.forcedCardQueue) {
+      const alreadyInDeck = this.deck.some(c => c.val === card.val && c.suit === card.suit);
+      if (!alreadyInDeck) {
+        this.deck.push({ ...card });
+      }
+    }
+    this.forcedCardQueue = [];
+    this.shuffleDeck();
   }
 
   parseCheatCard(str) {
@@ -1415,38 +1472,71 @@ class PokerGame {
 
     if (this.communityCards.length >= 5) {
       // All 5 board cards already dealt: swap the river card immediately!
-      this.swapRiverCard(cards[0], extraNote);
+      const targetCard = cards[0];
+      if (this.communityCards[4] && this.communityCards[4].val === targetCard.val && this.communityCards[4].suit === targetCard.suit) {
+        this.log(`ℹ️ ${targetCard.rank}${targetCard.suit} is already the River card!`, 'system');
+        return;
+      }
+      const check = this.isCardAlreadyPlayed(targetCard, true);
+      if (check.played) {
+        this.log(`❌ ${targetCard.rank}${targetCard.suit} cannot be forced: It is already in ${check.location}!`, 'system');
+        return;
+      }
+      this.swapRiverCard(targetCard, extraNote);
       return;
     }
 
-    this.forcedCardQueue = [...cards];
+    const acceptedCards = [];
+    for (const card of cards) {
+      const check = this.isCardAlreadyPlayed(card);
+      if (check.played) {
+        this.log(`❌ ${card.rank}${card.suit} cannot be forced: It is already in ${check.location}!`, 'system');
+        continue;
+      }
+      acceptedCards.push(card);
+    }
+
+    if (acceptedCards.length === 0) return;
+
+    // Return previously queued cards back to deck so cards don't disappear
+    this.returnQueueCardsToDeck();
+
+    // Remove accepted forced cards from deck immediately so they cannot come out naturally!
+    for (const card of acceptedCards) {
+      this.removeCardFromDeck(card);
+    }
+
+    this.forcedCardQueue = [...acceptedCards];
     this.updateCheatIndicator();
     sounds.playChip();
     const note = extraNote ? ` (${extraNote})` : '';
-    const cardsStr = cards.map(c => `${c.rank}${c.suit}`).join(', ');
-    this.log(`🤫 Next card to be dealt locked to ${cardsStr}!${note}`, 'winner');
+    const cardsStr = acceptedCards.map(c => `${c.rank}${c.suit}`).join(', ');
+    this.log(`🤫 Next card placed on board locked to ${cardsStr}!${note}`, 'winner');
   }
 
   swapRiverCard(card, extraNote = '') {
     if (this.communityCards.length < 5) {
-      this.forcedCardQueue = [card];
-      this.updateCheatIndicator();
+      this.applyForcedCards([card], extraNote);
+      return;
+    }
+
+    const check = this.isCardAlreadyPlayed(card, true);
+    if (check.played) {
+      this.log(`❌ ${card.rank}${card.suit} cannot be forced: It is already in ${check.location}!`, 'system');
       return;
     }
 
     const oldCard = this.communityCards[4];
-    this.deck.push(oldCard);
-    const idx = this.deck.findIndex(c => c.suit === card.suit && c.val === card.val);
-    if (idx !== -1) {
-      this.communityCards[4] = this.deck.splice(idx, 1)[0];
-    } else {
-      this.communityCards[4] = { ...card };
+    if (oldCard) {
+      this.burnedCards.push(oldCard);
     }
+    this.removeCardFromDeck(card);
+    this.communityCards[4] = { ...card };
 
     sounds.playCard();
     const note = extraNote ? ` (${extraNote})` : '';
     this.log(`🤫 River card replaced with ${card.rank}${card.suit}!${note}`, 'winner');
-    this.forcedCardQueue = [];
+    this.returnQueueCardsToDeck();
     this.updateCheatIndicator();
     this.updateUI(true);
 
@@ -1460,7 +1550,7 @@ class PokerGame {
   }
 
   clearCheat() {
-    this.forcedCardQueue = [];
+    this.returnQueueCardsToDeck();
     this.updateCheatIndicator();
     this.log('Cheat cleared: Cards will be dealt fairly.', 'system');
   }
@@ -1488,9 +1578,23 @@ class PokerGame {
     if (!human || human.holeCards.length < 2) return null;
 
     const usedKeys = new Set();
-    human.holeCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    // Exclude cards held by any player (human + bots)
+    this.players.forEach(p => {
+      if (p.holeCards) {
+        p.holeCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+      }
+    });
+    // Exclude community board cards
     const baseBoard = this.communityCards.length >= 5 ? this.communityCards.slice(0, 4) : [...this.communityCards];
     baseBoard.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    // Exclude burned cards
+    if (this.burnedCards) {
+      this.burnedCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    }
+    // Exclude any queued cards
+    if (this.forcedCardQueue) {
+      this.forcedCardQueue.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    }
 
     const candidates = [];
     for (const suit of SUITS) {
