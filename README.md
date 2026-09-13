@@ -26,9 +26,9 @@ Once enabled, your game will be live at:
 
 Use the in-game **🤫 Bribes** buttons (in the top header, start bar, or betting bar) to open the interactive **Bribe the Dealer** dialog:
 
-- **👁️ Buy Card Peek ($50)**: Slipped under the table to reveal all opponents' hole cards face-up with real-time hand rankings for the duration of the hand.
-- **✨ Guarantee Best Next Card ($150)**: The dealer analyzes the board and forces the optimal card to maximize your winning hand.
-- **🎯 Bribe for Specific Card ($100)**: Interactive card picker (select Rank `2–A` and Suit `♠ ♥ ♦ ♣`) to force any exact card as the next community card (or swap the River).
+- **👁️ Buy Card Peek ($250)**: Slipped under the table to reveal all opponents' hole cards face-up with real-time hand rankings for the duration of the hand.
+- **✨ Guarantee Best Next Card ($750)**: The dealer analyzes the board and forces the optimal card to maximize your winning hand.
+- **🎯 Bribe for Specific Card ($500)**: Interactive card picker (select Rank `2–A` and Suit `♠ ♥ ♦ ♣`) to force any exact card as the next community card (or swap the River).
 
 *(Commands in `💬 Chat` such as `##bribe`, `##peek`, `##deal AS`, and `##deal best` also trigger these bribes and deduct chips accordingly).*
 

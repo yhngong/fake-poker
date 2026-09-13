@@ -23,6 +23,12 @@ const RANKS = [
   { rank: 'A', val: 14 }
 ];
 
+const BRIBE_COSTS = {
+  PEEK: 250,
+  SPECIFIC_CARD: 500,
+  BEST_CARD: 750
+};
+
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function getSecureRandomInt(max) {
@@ -1667,7 +1673,7 @@ class PokerGame {
 
     if (action === 'deal' || action === 'force') {
       if (!rest) {
-        this.log('Usage: ##deal <Card> (e.g. ##deal AS, ##deal 10H) - Costs $100 chips, or ##deal best - Costs $150 chips', 'system');
+        this.log(`Usage: ##deal <Card> (e.g. ##deal AS, ##deal 10H) - Costs $${BRIBE_COSTS.SPECIFIC_CARD} chips, or ##deal best - Costs $${BRIBE_COSTS.BEST_CARD} chips`, 'system');
         return;
       }
 
@@ -1683,7 +1689,7 @@ class PokerGame {
       }
 
       const human = this.players[0];
-      const COST = 100;
+      const COST = BRIBE_COSTS.SPECIFIC_CARD;
       if (human && human.chips < COST) {
         this.log(`❌ Not enough chips! Bribing the dealer for a card costs $${COST} (You have $${human.chips}).`, 'system');
         return;
@@ -1706,7 +1712,7 @@ class PokerGame {
       } else {
         this.applyForcedCards([targetCard], `🤝 Bribed: $${COST}`);
       }
-      this.log(`🤫 You bribed the dealer $100! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'winner');
+      this.log(`🤫 You bribed the dealer $${COST}! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'winner');
     } else if (['peek', 'see', 'xray', 'x-ray', 'spy', 'reveal', 'cards', 'hands', 'show', 'god', 'godmode', 'botcards', 'look'].includes(action)) {
       const sub = rest.toLowerCase();
       if (sub === 'off' || sub === 'disable' || sub === 'hide' || sub === 'false') {
@@ -1715,7 +1721,7 @@ class PokerGame {
         this.log('ℹ️ X-Ray Vision is already active for this hand!', 'system');
         this.logOpponentHands();
       } else {
-        // Buying peek costs $50
+        // Buying peek costs $250
         this.bribeBuyPeek();
       }
     } else if (action === 'unpeek' || action === 'hide') {
@@ -1723,13 +1729,13 @@ class PokerGame {
     } else if (action === 'clear' || action === 'unforce' || action === 'fair' || action === 'reset') {
       this.clearCheat();
     } else if (action === 'help') {
-      this.log('🃏 Commands & Bribes:\n• Tap "🤫 Bribes" button or type ##bribe to open the Dealer Bribe menu\n• ##deal AS (Bribe $100 for Ace of Spades)\n• ##deal best (Bribe $150 for auto-best card)\n• ##peek (Bribe $50 to see opponents\' cards)\n• ##clear (Cancel pending forced cards)', 'system');
+      this.log(`🃏 Commands & Bribes:\n• Tap "🤫 Bribes" button or type ##bribe to open the Dealer Bribe menu\n• ##deal AS (Bribe $${BRIBE_COSTS.SPECIFIC_CARD} for Ace of Spades)\n• ##deal best (Bribe $${BRIBE_COSTS.BEST_CARD} for auto-best card)\n• ##peek (Bribe $${BRIBE_COSTS.PEEK} to see opponents' cards)\n• ##clear (Cancel pending forced cards)`, 'system');
     } else {
       // Check if user typed card shorthand directly e.g. ##AS or ##10H
       const directCards = this.parseCheatCards(clean);
       if (directCards.length > 0) {
         const human = this.players[0];
-        const COST = 100;
+        const COST = BRIBE_COSTS.SPECIFIC_CARD;
         if (human && human.chips < COST) {
           this.log(`❌ Not enough chips! Bribing for a card costs $${COST} (You have $${human.chips}).`, 'system');
           return;
@@ -1750,7 +1756,7 @@ class PokerGame {
         } else {
           this.applyForcedCards([targetCard], `🤝 Bribed: $${COST}`);
         }
-        this.log(`🤫 You bribed the dealer $100! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'winner');
+        this.log(`🤫 You bribed the dealer $${COST}! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'winner');
       } else {
         this.log(`Unknown command "${rawCmd}". Tap "🤫 Bribes" or type ##help.`, 'system');
       }
@@ -1992,36 +1998,36 @@ class PokerGame {
         this.buyPeekBtn.disabled = true;
         this.buyPeekBtn.classList.add('active-bought');
         this.buyPeekBtn.innerHTML = '<span>✓ Peek Vision Active for this Hand</span>';
-      } else if (human && human.chips < 50) {
+      } else if (human && human.chips < BRIBE_COSTS.PEEK) {
         this.buyPeekBtn.disabled = true;
         this.buyPeekBtn.classList.remove('active-bought');
-        this.buyPeekBtn.innerHTML = '<span>👁️ Buy Card Peek ($50) — Need $50</span>';
+        this.buyPeekBtn.innerHTML = `<span>👁️ Buy Card Peek ($${BRIBE_COSTS.PEEK}) — Need $${BRIBE_COSTS.PEEK}</span>`;
       } else {
         this.buyPeekBtn.disabled = false;
         this.buyPeekBtn.classList.remove('active-bought');
-        this.buyPeekBtn.innerHTML = '<span>👁️ Buy Card Peek ($50)</span>';
+        this.buyPeekBtn.innerHTML = `<span>👁️ Buy Card Peek ($${BRIBE_COSTS.PEEK})</span>`;
       }
     }
 
     // Update best card button status
     if (this.buyBestCardBtn) {
-      if (human && human.chips < 150) {
+      if (human && human.chips < BRIBE_COSTS.BEST_CARD) {
         this.buyBestCardBtn.disabled = true;
-        this.buyBestCardBtn.innerHTML = '<span>✨ Deal Best Card ($150) — Need $150</span>';
+        this.buyBestCardBtn.innerHTML = `<span>✨ Deal Best Card ($${BRIBE_COSTS.BEST_CARD}) — Need $${BRIBE_COSTS.BEST_CARD}</span>`;
       } else {
         this.buyBestCardBtn.disabled = false;
-        this.buyBestCardBtn.innerHTML = '<span>✨ Deal My Best Card ($150)</span>';
+        this.buyBestCardBtn.innerHTML = `<span>✨ Deal My Best Card ($${BRIBE_COSTS.BEST_CARD})</span>`;
       }
     }
 
     // Update specific card button status
     if (this.buySpecificCardBtn) {
-      if (human && human.chips < 100) {
+      if (human && human.chips < BRIBE_COSTS.SPECIFIC_CARD) {
         this.buySpecificCardBtn.disabled = true;
-        this.buySpecificCardBtn.innerHTML = `<span>🤝 Deal <strong>${this.selectedBribeRank}${this.selectedBribeSuit}</strong> ($100) — Need $100</span>`;
+        this.buySpecificCardBtn.innerHTML = `<span>🤝 Deal <strong>${this.selectedBribeRank}${this.selectedBribeSuit}</strong> ($${BRIBE_COSTS.SPECIFIC_CARD}) — Need $${BRIBE_COSTS.SPECIFIC_CARD}</span>`;
       } else {
         this.buySpecificCardBtn.disabled = false;
-        this.buySpecificCardBtn.innerHTML = `<span>🤝 Deal <strong>${this.selectedBribeRank}${this.selectedBribeSuit}</strong> ($100)</span>`;
+        this.buySpecificCardBtn.innerHTML = `<span>🤝 Deal <strong>${this.selectedBribeRank}${this.selectedBribeSuit}</strong> ($${BRIBE_COSTS.SPECIFIC_CARD})</span>`;
       }
     }
 
@@ -2049,7 +2055,7 @@ class PokerGame {
   bribeBuyPeek() {
     const human = this.players[0];
     if (!human) return;
-    const COST = 50;
+    const COST = BRIBE_COSTS.PEEK;
 
     if (this.peekCheat) {
       this.showBribeFeedback('Peek vision is already active for this hand!', 'success');
@@ -2070,19 +2076,19 @@ class PokerGame {
     this.updateUI(false);
     sounds.playChip();
 
-    this.showBribeFeedback('🤫 Dealer slipped $50! Opponents\' cards are revealed.', 'success');
+    this.showBribeFeedback(`🤫 Dealer slipped $${COST}! Opponents' cards are revealed.`, 'success');
     if (this.buyPeekBtn) {
       this.buyPeekBtn.disabled = true;
       this.buyPeekBtn.classList.add('active-bought');
       this.buyPeekBtn.innerHTML = '<span>✓ Peek Vision Active for this Hand</span>';
     }
-    this.log(`🤫 You bribed the dealer with $50 to peek at all opponents' cards!`, 'winner');
+    this.log(`🤫 You bribed the dealer with $${COST} to peek at all opponents' cards!`, 'winner');
   }
 
   bribeBuyBestCard() {
     const human = this.players[0];
     if (!human) return;
-    const COST = 150;
+    const COST = BRIBE_COSTS.BEST_CARD;
 
     if (human.chips < COST) {
       this.showBribeFeedback(`Not enough chips! Best card bribe costs $${COST}. You have $${human.chips}.`, 'error');
@@ -2103,8 +2109,8 @@ class PokerGame {
     sounds.playChip();
 
     this.applyForcedCards([best.card], `✨ Bribed: $${COST}`);
-    this.showBribeFeedback(`🤫 Dealer took $150! Guaranteed ${best.card.rank}${best.card.suit} (${best.eval.name}) next!`, 'success');
-    this.log(`🤫 You bribed the dealer $150 for your best card (${best.card.rank}${best.card.suit} - ${best.eval.name})!`, 'winner');
+    this.showBribeFeedback(`🤫 Dealer took $${COST}! Guaranteed ${best.card.rank}${best.card.suit} (${best.eval.name}) next!`, 'success');
+    this.log(`🤫 You bribed the dealer $${COST} for your best card (${best.card.rank}${best.card.suit} - ${best.eval.name})!`, 'winner');
 
     setTimeout(() => {
       this.closeBribeModal();
@@ -2114,7 +2120,7 @@ class PokerGame {
   bribeBuySpecificCard() {
     const human = this.players[0];
     if (!human) return;
-    const COST = 100;
+    const COST = BRIBE_COSTS.SPECIFIC_CARD;
 
     if (human.chips < COST) {
       this.showBribeFeedback(`Not enough chips! Bribing for a card costs $${COST}. You have $${human.chips}.`, 'error');
@@ -2152,8 +2158,8 @@ class PokerGame {
       this.applyForcedCards([targetCard], `🤝 Bribed: $${COST}`);
     }
 
-    this.showBribeFeedback(`🤫 Dealer took $100! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'success');
-    this.log(`🤫 You bribed the dealer $100 to deal ${targetCard.rank}${targetCard.suit}!`, 'winner');
+    this.showBribeFeedback(`🤫 Dealer took $${COST}! Next card locked to ${targetCard.rank}${targetCard.suit}!`, 'success');
+    this.log(`🤫 You bribed the dealer $${COST} to deal ${targetCard.rank}${targetCard.suit}!`, 'winner');
 
     setTimeout(() => {
       this.closeBribeModal();
