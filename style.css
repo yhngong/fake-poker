@@ -322,6 +322,19 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
 }
 
+.seat.my-seat .player-card {
+  border-color: #0284c7;
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+}
+
+.seat.my-seat .player-name::after {
+  content: ' (You)';
+  font-size: 0.66rem;
+  color: #38bdf8;
+  font-weight: 800;
+}
+
 /* Desktop Seats Positioning */
 .seat-top {
   top: -20px;
@@ -1857,3 +1870,158 @@ body {
     height: 54px;
   }
 }
+
+/* =========================================================
+   MULTIPLAYER ONLINE & CLOUDFLARE STYLES
+   ========================================================= */
+
+.icon-btn.online-btn {
+  background: #0c4a6e;
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.icon-btn.online-btn:hover, .icon-btn.online-btn:active {
+  background: #0369a1;
+  border-color: #7dd3fc;
+  color: #fff;
+}
+
+.icon-btn.online-btn.connected {
+  background: #064e3b;
+  border-color: #22c55e;
+  color: #86efac;
+}
+
+.mp-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.mp-status-banner .status-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mp-status-banner.offline {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+}
+.mp-status-banner.offline .status-indicator-dot {
+  background: #64748b;
+}
+
+.mp-status-banner.connecting {
+  background: #78350f;
+  border: 1px solid #f59e0b;
+  color: #fef3c7;
+}
+.mp-status-banner.connecting .status-indicator-dot {
+  background: #f59e0b;
+}
+
+.mp-status-banner.online {
+  background: #064e3b;
+  border: 1px solid #10b981;
+  color: #a7f3d0;
+}
+.mp-status-banner.online .status-indicator-dot {
+  background: #22c55e;
+}
+
+.mp-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.mp-input-row .chat-input {
+  margin-top: 0;
+}
+
+.mp-accessory-selector {
+  margin-top: 4px;
+}
+
+.mp-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.mp-seats-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.mp-seat-card {
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mp-seat-card.current-user {
+  border-color: #38bdf8;
+  background: #132238;
+}
+
+.mp-seat-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mp-seat-avatar {
+  font-size: 1.1rem;
+}
+
+.mp-seat-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.mp-seat-chips {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.mp-seat-badge {
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.mp-seat-badge.human {
+  background: #0c4a6e;
+  border: 1px solid #0284c7;
+  color: #7dd3fc;
+}
+
+.mp-seat-badge.bot {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #94a3b8;
+}
+

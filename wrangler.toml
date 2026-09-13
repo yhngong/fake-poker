@@ -1,0 +1,17 @@
+name = "fake-poker-backend"
+main = "worker/index.js"
+compatibility_date = "2024-09-01"
+
+[durable_objects]
+bindings = [
+  { name = "POKER_ROOM", class_name = "PokerRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["PokerRoom"]
+
+# Optional: Serves frontend static assets if hosted fully on Cloudflare Workers
+[assets]
+directory = "."
+binding = "ASSETS"

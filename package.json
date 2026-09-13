@@ -1,0 +1,22 @@
+{
+  "name": "fake-poker",
+  "version": "1.0.0",
+  "description": "Texas Hold'em Poker with Cloudflare Workers Multiplayer Backend",
+  "main": "app.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": [
+    "poker",
+    "cloudflare-workers",
+    "durable-objects",
+    "websockets",
+    "texas-holdem"
+  ],
+  "author": "Yohan Gong",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}

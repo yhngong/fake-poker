@@ -22,6 +22,7 @@
         <span class="suit-icon red">♥</span>
       </div>
       <div class="header-actions">
+        <button id="multiplayer-btn" class="icon-btn online-btn" title="Multiplayer: Play with friends via Cloudflare">🌐 Online</button>
         <button id="bribe-menu-btn" class="icon-btn cheat-btn" title="Bribe the Dealer for cards or peek vision">🤫 Bribe</button>
         <button id="sound-btn" class="icon-btn" title="Toggle Sound">🔊</button>
         <button id="log-toggle-btn" class="icon-btn" title="Open Chat & History">💬 Chat</button>
@@ -294,6 +295,72 @@
                   <span>🤝 Deal <strong id="bribe-confirm-card-name">A♠</strong> ($500)</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Multiplayer Lobby Modal (Cloudflare Workers) -->
+    <div id="multiplayer-modal" class="modal-backdrop" style="display: none;">
+      <div class="bribe-modal-dialog multiplayer-dialog">
+        <div class="bribe-modal-header">
+          <div class="bribe-modal-title">
+            <span>🌐</span>
+            <h3>Cloudflare Multiplayer</h3>
+          </div>
+          <button id="close-multiplayer-btn" class="close-btn" type="button">&times;</button>
+        </div>
+
+        <div class="bribe-modal-body">
+          <div id="mp-status-banner" class="mp-status-banner offline">
+            <span class="status-indicator-dot"></span>
+            <span id="mp-status-text">Mode: Local Game (Playing vs Bots)</span>
+          </div>
+
+          <!-- Room Config Section -->
+          <div class="bribe-card-section">
+            <div class="picker-label">Room Code:</div>
+            <div class="mp-input-row">
+              <input type="text" id="mp-room-input" class="chat-input mp-input" placeholder="e.g. main or table-777" value="main" />
+              <button id="mp-random-room-btn" class="icon-btn" type="button" title="Generate random room code">🎲 Random</button>
+              <button id="mp-copy-link-btn" class="icon-btn" type="button" title="Copy shareable invite link">📋 Share</button>
+            </div>
+
+            <div class="picker-label" style="margin-top: 6px;">Your Name:</div>
+            <div class="mp-input-row">
+              <input type="text" id="mp-name-input" class="chat-input mp-input" placeholder="Your display name" maxlength="14" value="You" />
+            </div>
+
+            <div class="picker-label" style="margin-top: 6px;">Your Avatar Accessory:</div>
+            <div class="suit-selector mp-accessory-selector" id="mp-accessory-selector">
+              <button type="button" class="suit-chip" data-acc="👑">👑 Crown</button>
+              <button type="button" class="suit-chip" data-acc="🎩">🎩 Fedora</button>
+              <button type="button" class="suit-chip" data-acc="🕶️">🕶️ Shades</button>
+              <button type="button" class="suit-chip active" data-acc="🧢">🧢 Cap</button>
+            </div>
+
+            <div class="picker-label" style="margin-top: 6px;">Cloudflare Worker WebSocket URL:</div>
+            <div class="mp-input-row">
+              <input type="text" id="mp-server-input" class="chat-input mp-input" placeholder="wss://fake-poker-backend.your-subdomain.workers.dev/ws" />
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mp-action-row">
+            <button id="mp-connect-btn" class="btn bribe-action-btn specific-btn" type="button">
+              <span>⚡ Connect & Play Online</span>
+            </button>
+            <button id="mp-disconnect-btn" class="btn secondary-btn" type="button" style="display: none;">
+              <span>🤖 Disconnect (Play Offline)</span>
+            </button>
+          </div>
+
+          <!-- Seated Players List in Room -->
+          <div class="bribe-card-section">
+            <div class="picker-label">Room Table Seats:</div>
+            <div id="mp-seats-list" class="mp-seats-list">
+              <div class="mp-seat-item">Loading seats...</div>
             </div>
           </div>
         </div>
