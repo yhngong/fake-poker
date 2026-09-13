@@ -69,19 +69,96 @@ class SoundManager {
     osc.stop(this.ctx.currentTime + 0.08);
   }
 
-  playCard() {
+  playCardDeal() {
     if (!this.enabled || !this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.06);
-    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.06);
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Friction / "whisk" of card sliding across felt/deck
+      const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * 0.08)); // 80ms
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+      }
+
+      const whiteNoise = this.ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(3400 + (Math.random() * 800 - 400), now);
+      filter.Q.setValueAtTime(2.2, now);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.35, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+
+      whiteNoise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+      whiteNoise.start(now);
+
+      // 2. Physical tactile "snap/thump" when card lands on felt
+      const snapOsc = this.ctx.createOscillator();
+      const snapGain = this.ctx.createGain();
+      snapOsc.type = 'triangle';
+      snapOsc.frequency.setValueAtTime(340 + (Math.random() * 60 - 30), now + 0.012);
+      snapOsc.frequency.exponentialRampToValueAtTime(70, now + 0.06);
+
+      snapGain.gain.setValueAtTime(0, now);
+      snapGain.gain.setValueAtTime(0.24, now + 0.012);
+      snapGain.gain.exponentialRampToValueAtTime(0.005, now + 0.06);
+
+      snapOsc.connect(snapGain);
+      snapGain.connect(this.ctx.destination);
+      snapOsc.start(now + 0.012);
+      snapOsc.stop(now + 0.07);
+    } catch (e) {}
+  }
+
+  playCard() {
+    this.playCardDeal();
+  }
+
+  playCardFlip() {
+    if (!this.enabled || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.08);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+
+      // Subtle friction flutter
+      const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * 0.05));
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(2500, now);
+      const nGain = this.ctx.createGain();
+      nGain.gain.setValueAtTime(0.18, now);
+      nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      noise.connect(filter);
+      filter.connect(nGain);
+      nGain.connect(this.ctx.destination);
+      noise.start(now);
+    } catch (e) {}
   }
 
   playWin() {
@@ -530,8 +607,9 @@ class PokerGame {
     this.shuffleDeck();
   }
 
-  startNewHand() {
+  async startNewHand() {
     this.gameSessionId = (this.gameSessionId || 0) + 1;
+    const sessionId = this.gameSessionId;
     if (this.botTimeout) {
       clearTimeout(this.botTimeout);
       this.botTimeout = null;
@@ -547,6 +625,7 @@ class PokerGame {
       if (p.chips <= 0) p.chips = 500;
     });
 
+    this.startControls.style.display = 'none';
     this.dealerIdx = (this.dealerIdx + 1) % this.players.length;
     this.createDeck();
     this.burnedCards = [];
@@ -564,13 +643,15 @@ class PokerGame {
     }
     this.humanRaisedThisHand = false;
 
-    // Reset player states
+    // Reset player states & DOM
     this.players.forEach(p => {
       p.folded = false;
       p.allIn = false;
       p.cardsRevealed = false;
       p.currentBet = 0;
       p.holeCards = [];
+      const cardsEl = document.getElementById(`cards-${p.id}`);
+      if (cardsEl) cardsEl.innerHTML = '';
     });
 
     // If forced cards are already queued before hand starts, remove them immediately
@@ -581,21 +662,33 @@ class PokerGame {
       }
     }
 
-    // Deal hole cards in authentic casino rotational order:
+    this.phase = 'PRE-FLOP';
+    this.updateUI(true); // Clean board slots & dealer badge
+    this.log('--- Dealing Hole Cards ---', 'system');
+
+    // Deal hole cards in authentic casino rotational order with deal animation and sound:
     // Round 1: 1 card to each player starting clockwise from Small Blind
     for (let i = 0; i < this.players.length; i++) {
       const pIdx = (this.dealerIdx + 1 + i) % this.players.length;
-      this.players[pIdx].holeCards.push(this.deck.pop());
+      const player = this.players[pIdx];
+      player.holeCards.push(this.deck.pop());
+      sounds.playCardDeal();
+      this.renderPlayerDealCard(player, 0);
+      await sleep(130);
+      if (sessionId !== this.gameSessionId) return;
     }
     // Round 2: 2nd card to each player starting clockwise from Small Blind
     for (let i = 0; i < this.players.length; i++) {
       const pIdx = (this.dealerIdx + 1 + i) % this.players.length;
-      this.players[pIdx].holeCards.push(this.deck.pop());
+      const player = this.players[pIdx];
+      player.holeCards.push(this.deck.pop());
+      sounds.playCardDeal();
+      this.renderPlayerDealCard(player, 1);
+      await sleep(130);
+      if (sessionId !== this.gameSessionId) return;
     }
 
-    sounds.playCard();
-    this.phase = 'PRE-FLOP';
-    this.log('--- New Hand Dealt ---', 'system');
+    this.log('--- Hands Dealt ---', 'system');
 
     // Post Blinds
     const sbIdx = (this.dealerIdx + 1) % this.players.length;
@@ -609,9 +702,23 @@ class PokerGame {
     this.turnHistoryCount = 0;
     this.lastAggressorIdx = bbIdx;
 
-    this.startControls.style.display = 'none';
-    this.updateUI(true); // Initial cards render
+    this.updateUI(false);
     this.nextTurn();
+  }
+
+  renderPlayerDealCard(player, cardIndex) {
+    const cardsEl = document.getElementById(`cards-${player.id}`);
+    if (!cardsEl) return;
+    const card = player.holeCards[cardIndex];
+    if (player.isHuman) {
+      cardsEl.appendChild(this.renderCardDOM(card, false, true));
+      if (this.handRankDesc) {
+        this.handRankDesc.innerText = 'Pre-Flop';
+        this.handRankDesc.style.display = 'block';
+      }
+    } else {
+      cardsEl.appendChild(this.renderCardDOM(null, true, true));
+    }
   }
 
   postBet(player, amount, label = 'Bet') {
@@ -1057,57 +1164,60 @@ class PokerGame {
       this.phase = 'FLOP';
       const burn = this.deck.pop(); // Burn card
       if (burn) this.burnedCards.push(burn);
+      sounds.playCardDeal();
       this.log('--- Dealing Flop ---', 'system');
       this.updateUI(false);
-      await sleep(500);
+      await sleep(450);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 1
       this.communityCards.push(this.drawBoardCard('Flop'));
-      sounds.playCard();
-      this.updateUI(true);
-      await sleep(400);
+      sounds.playCardDeal();
+      this.updateUI(true, 0);
+      await sleep(380);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 2
       this.communityCards.push(this.drawBoardCard('Flop'));
-      sounds.playCard();
-      this.updateUI(true);
-      await sleep(400);
+      sounds.playCardDeal();
+      this.updateUI(true, 1);
+      await sleep(380);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 3
       this.communityCards.push(this.drawBoardCard('Flop'));
-      sounds.playCard();
-      this.updateUI(true);
-      await sleep(750); // Pause to assess the full flop
+      sounds.playCardDeal();
+      this.updateUI(true, 2);
+      await sleep(700); // Pause to assess the full flop
       if (sessionId !== this.gameSessionId) return;
     } else if (this.phase === 'FLOP') {
       this.phase = 'TURN';
       const burn = this.deck.pop(); // Burn card
       if (burn) this.burnedCards.push(burn);
+      sounds.playCardDeal();
       this.log('--- Dealing Turn ---', 'system');
       this.updateUI(false);
-      await sleep(850); // Suspenseful pause before the Turn!
+      await sleep(800); // Suspenseful pause before the Turn!
       if (sessionId !== this.gameSessionId) return;
 
       this.communityCards.push(this.drawBoardCard('Turn'));
-      sounds.playCard();
-      this.updateUI(true);
+      sounds.playCardDeal();
+      this.updateUI(true, 3);
       await sleep(750);
       if (sessionId !== this.gameSessionId) return;
     } else if (this.phase === 'TURN') {
       this.phase = 'RIVER';
       const burn = this.deck.pop(); // Burn card
       if (burn) this.burnedCards.push(burn);
+      sounds.playCardDeal();
       this.log('--- Dealing River ---', 'system');
       this.updateUI(false);
-      await sleep(950); // Suspenseful pause before the River!
+      await sleep(900); // Suspenseful pause before the River!
       if (sessionId !== this.gameSessionId) return;
 
       this.communityCards.push(this.drawBoardCard('River'));
-      sounds.playCard();
-      this.updateUI(true);
+      sounds.playCardDeal();
+      this.updateUI(true, 4);
       await sleep(800);
       if (sessionId !== this.gameSessionId) return;
     } else if (this.phase === 'RIVER') {
@@ -1137,8 +1247,18 @@ class PokerGame {
     for (const p of this.players) {
       if (!p.isHuman) {
         p.cardsRevealed = true;
-        sounds.playCard();
-        this.updateUI();
+        sounds.playCardFlip();
+        const cardsEl = document.getElementById(`cards-${p.id}`);
+        if (cardsEl && p.holeCards.length > 0) {
+          cardsEl.innerHTML = '';
+          p.holeCards.forEach(c => {
+            const cardEl = this.renderCardDOM(c);
+            cardEl.classList.add('card-flip-reveal');
+            if (p.folded) cardEl.classList.add('card-folded');
+            cardsEl.appendChild(cardEl);
+          });
+        }
+        this.updateUI(false);
 
         if (!p.folded) {
           const evalResult = HandEvaluator.evaluate7([...p.holeCards, ...this.communityCards]);
@@ -1740,7 +1860,7 @@ class PokerGame {
     }, 600 + Math.random() * 600);
   }
 
-  updateUI(refreshCards = false) {
+  updateUI(refreshCards = false, newCommunityIdx = -1) {
     this.potDisplay.innerText = `$${this.pot}`;
     this.phaseBadge.innerText = this.phase;
 
@@ -1749,7 +1869,8 @@ class PokerGame {
       this.communityCardsEl.innerHTML = '';
       for (let i = 0; i < 5; i++) {
         if (this.communityCards[i]) {
-          this.communityCardsEl.appendChild(this.renderCardDOM(this.communityCards[i]));
+          const isJustDealt = (i === newCommunityIdx);
+          this.communityCardsEl.appendChild(this.renderCardDOM(this.communityCards[i], false, isJustDealt));
         } else {
           const slot = document.createElement('div');
           slot.className = 'card-slot';
@@ -1823,8 +1944,8 @@ class PokerGame {
         }
       }
 
-      // Cards rendering: Rebuild cards ONLY when refreshCards is true (deal, flop, turn, river, showdown)
-      if (refreshCards) {
+      // Cards rendering: Rebuild cards ONLY when refreshCards is true AND not during mid-phase board card deals
+      if (refreshCards && newCommunityIdx === -1) {
         cardsEl.innerHTML = '';
         if (p.holeCards.length > 0) {
           if (p.isHuman || this.roundOver || p.cardsRevealed) {
@@ -1861,14 +1982,15 @@ class PokerGame {
     }
   }
 
-  renderCardDOM(card, isBack = false) {
+  renderCardDOM(card, isBack = false, isNewDeal = false) {
     const cardEl = document.createElement('div');
+    const animClass = isNewDeal ? ' card-deal-anim' : '';
     if (isBack) {
-      cardEl.className = 'card back';
+      cardEl.className = `card back${animClass}`;
       return cardEl;
     }
 
-    cardEl.className = `card ${card.color}`;
+    cardEl.className = `card ${card.color}${animClass}`;
     cardEl.innerHTML = `
       <div class="card-corner top-left">
         <span class="rank">${card.rank}</span>

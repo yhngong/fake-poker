@@ -279,6 +279,7 @@ body {
   display: flex;
   gap: 6px;
   min-height: 74px;
+  perspective: 600px;
 }
 
 .card-slot {
@@ -451,6 +452,7 @@ body {
   display: flex;
   gap: 4px;
   margin-top: 4px;
+  perspective: 600px;
 }
 
 /* Card Component */
@@ -541,6 +543,57 @@ body {
   font-size: 1.3rem;
   color: rgba(255, 255, 255, 0.3);
   margin: auto;
+}
+
+/* Card Dealing & Flipping Animations */
+@keyframes card-deal-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-26px) scale(0.62) rotate(-6deg);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.55);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.03) rotate(0.6deg);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.card.card-deal-anim {
+  animation: card-deal-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes card-flip-reveal {
+  0% {
+    opacity: 0.5;
+    transform: rotateY(90deg) scale(0.88);
+  }
+  60% {
+    opacity: 1;
+    transform: rotateY(-8deg) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg) scale(1);
+  }
+}
+
+.card.card-flip-reveal {
+  animation: card-flip-reveal 0.35s ease-out both;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.card-deal-anim,
+  .card.card-flip-reveal {
+    animation: none !important;
+  }
 }
 
 /* Bottom Controls */
