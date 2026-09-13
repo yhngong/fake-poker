@@ -375,6 +375,9 @@ class PokerGame {
     this.humanRaisedThisHand = false;
     this.gameSessionId = 0;
     this.botTimeout = null;
+    this.forcedRiverCard = null;
+    this.selectedCheatSuit = '♠';
+    this.selectedCheatCard = null;
 
     this.bindDOM();
   }
@@ -402,6 +405,22 @@ class PokerGame {
     this.liveTicker = document.getElementById('live-ticker');
     this.tickerText = document.getElementById('ticker-text');
 
+    // Cheat elements
+    this.cheatToggleBtn = document.getElementById('cheat-toggle-btn');
+    this.cheatModal = document.getElementById('cheat-modal');
+    this.closeCheatBtn = document.getElementById('close-cheat-btn');
+    this.autoRigBtn = document.getElementById('auto-rig-btn');
+    this.cheatAutoMsg = document.getElementById('cheat-auto-msg');
+    this.cheatSuitSelector = document.getElementById('cheat-suit-selector');
+    this.cheatRankGrid = document.getElementById('cheat-rank-grid');
+    this.cheatPreviewCard = document.getElementById('cheat-preview-card');
+    this.cheatPreviewEval = document.getElementById('cheat-preview-eval');
+    this.clearCheatBtn = document.getElementById('clear-cheat-btn');
+    this.applyCheatBtn = document.getElementById('apply-cheat-btn');
+    this.riggedRiverIndicator = document.getElementById('rigged-river-indicator');
+    this.riggedCardVal = document.getElementById('rigged-card-val');
+    this.cancelRiggedBtn = document.getElementById('cancel-rigged-btn');
+
     // Unlock audio on first touch/click anywhere (iOS Safari / mobile policy)
     const unlockAudio = () => {
       sounds.init();
@@ -427,6 +446,47 @@ class PokerGame {
     }
     if (this.resetAllAltBtn) {
       this.resetAllAltBtn.addEventListener('click', handleResetAll);
+    }
+
+    // Cheat menu events
+    if (this.cheatToggleBtn) {
+      this.cheatToggleBtn.addEventListener('click', () => this.openCheatModal());
+    }
+    if (this.closeCheatBtn) {
+      this.closeCheatBtn.addEventListener('click', () => this.closeCheatModal());
+    }
+    if (this.cheatModal) {
+      this.cheatModal.addEventListener('click', (e) => {
+        if (e.target === this.cheatModal) this.closeCheatModal();
+      });
+    }
+    if (this.autoRigBtn) {
+      this.autoRigBtn.addEventListener('click', () => this.autoRigRiver());
+    }
+    if (this.applyCheatBtn) {
+      this.applyCheatBtn.addEventListener('click', () => this.applyCheat());
+    }
+    if (this.clearCheatBtn) {
+      this.clearCheatBtn.addEventListener('click', () => this.clearCheat());
+    }
+    if (this.cancelRiggedBtn) {
+      this.cancelRiggedBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.clearCheat();
+      });
+    }
+    if (this.riggedRiverIndicator) {
+      this.riggedRiverIndicator.addEventListener('click', () => this.openCheatModal());
+    }
+    if (this.cheatSuitSelector) {
+      this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          this.selectedCheatSuit = tab.dataset.suit;
+          this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          this.renderCheatRankGrid();
+        });
+      });
     }
 
     this.soundBtn.addEventListener('click', () => {
@@ -1069,7 +1129,22 @@ class PokerGame {
       await sleep(950); // Suspenseful pause before the River!
       if (sessionId !== this.gameSessionId) return;
 
-      this.communityCards.push(this.deck.pop());
+      let riverCard;
+      if (this.forcedRiverCard) {
+        const idx = this.deck.findIndex(c => c.suit === this.forcedRiverCard.suit && c.val === this.forcedRiverCard.val);
+        if (idx !== -1) {
+          riverCard = this.deck.splice(idx, 1)[0];
+        } else {
+          riverCard = { ...this.forcedRiverCard };
+        }
+        this.log(`🤫 River dealt: ${riverCard.rank}${riverCard.suit} (Rigged)!`, 'winner');
+        this.forcedRiverCard = null;
+        this.updateCheatIndicator();
+      } else {
+        riverCard = this.deck.pop();
+      }
+
+      this.communityCards.push(riverCard);
       sounds.playCard();
       this.updateUI(true);
       await sleep(800);
@@ -1211,6 +1286,327 @@ class PokerGame {
     this.log('🔄 Game reset: All chips ($1,000) and bot memory/adaptive intelligence cleared to default.', 'system');
     if (this.tickerText) {
       this.tickerText.innerText = 'Game reset: All chips and bot intelligence restored.';
+    }
+
+    // 8. Clear cheat state
+    this.forcedRiverCard = null;
+    this.selectedCheatCard = null;
+    this.updateCheatIndicator();
+  }
+
+  // --- CHEAT ENGINE (DEALER'S SLEEVE) ---
+
+  openCheatModal() {
+    if (!this.cheatModal) return;
+    this.cheatModal.style.display = 'flex';
+    if (this.cheatAutoMsg) this.cheatAutoMsg.innerText = '';
+    
+    // Highlight selected suit tab
+    if (this.cheatSuitSelector) {
+      this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(tab => {
+        if (tab.dataset.suit === this.selectedCheatSuit) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+    }
+
+    if (this.forcedRiverCard) {
+      this.selectedCheatSuit = this.forcedRiverCard.suit;
+      this.selectedCheatCard = { ...this.forcedRiverCard };
+    }
+
+    this.renderCheatRankGrid();
+
+    if (this.applyCheatBtn) {
+      if (this.communityCards.length >= 5) {
+        this.applyCheatBtn.innerText = 'Swap River Card Now';
+      } else {
+        this.applyCheatBtn.innerText = 'Lock In River Card';
+      }
+    }
+  }
+
+  closeCheatModal() {
+    if (this.cheatModal) {
+      this.cheatModal.style.display = 'none';
+    }
+  }
+
+  isCardInPlay(card) {
+    const human = this.players[0];
+    if (human && human.holeCards.some(c => c.suit === card.suit && c.val === card.val)) return true;
+    if (this.communityCards.some(c => c.suit === card.suit && c.val === card.val)) return true;
+    return false;
+  }
+
+  renderCheatRankGrid() {
+    if (!this.cheatRankGrid) return;
+    this.cheatRankGrid.innerHTML = '';
+
+    const ORDERED_RANKS = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
+    const isRed = this.selectedCheatSuit === '♥' || this.selectedCheatSuit === '♦';
+
+    ORDERED_RANKS.forEach(r => {
+      const rObj = RANKS.find(x => x.rank === r);
+      const card = {
+        suit: this.selectedCheatSuit,
+        rank: r,
+        val: rObj.val,
+        color: isRed ? 'red' : 'black'
+      };
+
+      const btn = document.createElement('button');
+      btn.className = 'rank-btn';
+      btn.innerText = r;
+      if (isRed) btn.style.color = 'var(--red-suit)';
+
+      const inPlay = this.isCardInPlay(card);
+      if (inPlay) {
+        btn.classList.add('in-play');
+        btn.title = `${r}${card.suit} is currently in play`;
+      }
+
+      if (this.selectedCheatCard && this.selectedCheatCard.suit === card.suit && this.selectedCheatCard.val === card.val) {
+        btn.classList.add('selected');
+      }
+
+      btn.addEventListener('click', () => {
+        this.selectCheatCard(card);
+      });
+
+      this.cheatRankGrid.appendChild(btn);
+    });
+
+    if (this.selectedCheatCard) {
+      this.updateCheatPreview(this.selectedCheatCard);
+    } else {
+      if (this.cheatPreviewCard) {
+        this.cheatPreviewCard.innerText = 'None';
+        this.cheatPreviewCard.className = 'preview-badge';
+      }
+      if (this.cheatPreviewEval) {
+        this.cheatPreviewEval.innerText = 'Pick a card to see outcome';
+      }
+      if (this.applyCheatBtn) {
+        this.applyCheatBtn.disabled = true;
+      }
+    }
+  }
+
+  selectCheatCard(card) {
+    this.selectedCheatCard = card;
+    this.selectedCheatSuit = card.suit;
+
+    if (this.cheatRankGrid) {
+      this.cheatRankGrid.querySelectorAll('.rank-btn').forEach(btn => {
+        if (btn.innerText === card.rank) {
+          btn.classList.add('selected');
+        } else {
+          btn.classList.remove('selected');
+        }
+      });
+    }
+
+    this.updateCheatPreview(card);
+  }
+
+  updateCheatPreview(card) {
+    if (this.cheatPreviewCard) {
+      this.cheatPreviewCard.innerText = `${card.rank}${card.suit}`;
+      this.cheatPreviewCard.className = `preview-badge ${card.color === 'red' ? 'red' : ''}`;
+    }
+
+    if (this.applyCheatBtn) {
+      this.applyCheatBtn.disabled = false;
+      this.applyCheatBtn.innerText = this.communityCards.length >= 5 ? 'Swap River Card Now' : 'Lock In River Card';
+    }
+
+    if (this.cheatPreviewEval) {
+      const human = this.players[0];
+      if (human && human.holeCards.length === 2) {
+        const baseBoard = this.communityCards.slice(0, 4);
+        const testHand = [...human.holeCards, ...baseBoard, card];
+        if (testHand.length >= 5) {
+          const evalRes = HandEvaluator.evaluate7(testHand);
+          this.cheatPreviewEval.innerText = `✨ Outcome: ${evalRes.name}`;
+        } else {
+          this.cheatPreviewEval.innerText = `Forces ${card.rank}${card.suit} on the river`;
+        }
+      } else {
+        this.cheatPreviewEval.innerText = `Forces ${card.rank}${card.suit} on the next river`;
+      }
+    }
+  }
+
+  autoRigRiver() {
+    const res = this.findBestRiverCardForHuman();
+    if (!res || !res.card) {
+      if (this.cheatAutoMsg) {
+        this.cheatAutoMsg.innerText = 'Cannot auto-rig: deal cards first!';
+      }
+      return;
+    }
+
+    this.selectedCheatSuit = res.card.suit;
+    if (this.cheatSuitSelector) {
+      this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.suit === this.selectedCheatSuit);
+      });
+    }
+
+    this.renderCheatRankGrid();
+    this.selectCheatCard(res.card);
+
+    if (this.cheatAutoMsg) {
+      this.cheatAutoMsg.innerText = `✨ Auto-detected ${res.card.rank}${res.card.suit}: ${res.eval.name} (${res.beatsBots ? 'Beats all bots' : 'Best hand'})!`;
+    }
+  }
+
+  findBestRiverCardForHuman() {
+    const human = this.players[0];
+    if (!human || human.holeCards.length < 2) return null;
+
+    const usedKeys = new Set();
+    human.holeCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    const baseBoard = this.communityCards.slice(0, 4);
+    baseBoard.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+
+    const candidates = [];
+    for (const suit of SUITS) {
+      for (const rank of RANKS) {
+        if (!usedKeys.has(`${rank.val}_${suit.symbol}`)) {
+          candidates.push({
+            suit: suit.symbol,
+            rank: rank.rank,
+            val: rank.val,
+            color: suit.color
+          });
+        }
+      }
+    }
+
+    if (candidates.length === 0) return null;
+
+    const activeBots = this.players.filter(p => !p.isHuman && !p.folded && p.holeCards.length === 2);
+
+    let bestCard = null;
+    let bestScore = null;
+    let bestHumanEval = null;
+
+    for (const card of candidates) {
+      const testBoard = [...baseBoard, card];
+      let padIdx = 0;
+      while (testBoard.length < 5 && padIdx < candidates.length) {
+        const dummy = candidates[padIdx++];
+        if (dummy !== card && !testBoard.includes(dummy)) {
+          testBoard.push(dummy);
+        }
+      }
+
+      const humanEval = HandEvaluator.evaluate7([...human.holeCards, ...testBoard]);
+
+      let beatsBots = true;
+      for (const bot of activeBots) {
+        const botEval = HandEvaluator.evaluate7([...bot.holeCards, ...testBoard]);
+        if (HandEvaluator.compare(humanEval, botEval) <= 0) {
+          beatsBots = false;
+          break;
+        }
+      }
+
+      if (!bestCard) {
+        bestCard = card;
+        bestHumanEval = humanEval;
+        bestScore = { beatsBots, eval: humanEval };
+      } else {
+        if (beatsBots && !bestScore.beatsBots) {
+          bestCard = card;
+          bestHumanEval = humanEval;
+          bestScore = { beatsBots, eval: humanEval };
+        } else if (beatsBots === bestScore.beatsBots) {
+          if (HandEvaluator.compare(humanEval, bestScore.eval) > 0) {
+            bestCard = card;
+            bestHumanEval = humanEval;
+            bestScore = { beatsBots, eval: humanEval };
+          }
+        }
+      }
+    }
+
+    return { card: bestCard, eval: bestHumanEval, beatsBots: bestScore ? bestScore.beatsBots : false };
+  }
+
+  applyCheat() {
+    if (!this.selectedCheatCard) return;
+
+    if (this.communityCards.length >= 5) {
+      this.swapRiverCard(this.selectedCheatCard);
+      this.closeCheatModal();
+      return;
+    }
+
+    this.forcedRiverCard = { ...this.selectedCheatCard };
+    this.updateCheatIndicator();
+    sounds.playChip();
+    this.log(`🤫 River locked to ${this.selectedCheatCard.rank}${this.selectedCheatCard.suit}!`, 'winner');
+    this.closeCheatModal();
+  }
+
+  swapRiverCard(card) {
+    if (this.communityCards.length < 5) {
+      this.forcedRiverCard = card;
+      this.updateCheatIndicator();
+      return;
+    }
+
+    const oldCard = this.communityCards[4];
+    this.deck.push(oldCard);
+    const idx = this.deck.findIndex(c => c.suit === card.suit && c.val === card.val);
+    if (idx !== -1) {
+      this.communityCards[4] = this.deck.splice(idx, 1)[0];
+    } else {
+      this.communityCards[4] = { ...card };
+    }
+
+    sounds.playCard();
+    this.log(`🤫 River card replaced with ${card.rank}${card.suit}!`, 'winner');
+    this.forcedRiverCard = null;
+    this.updateCheatIndicator();
+    this.updateUI(true);
+
+    const human = this.players[0];
+    if (human && human.holeCards.length === 2) {
+      const evalRes = HandEvaluator.evaluate7([...human.holeCards, ...this.communityCards]);
+      if (this.handRankDesc) {
+        this.handRankDesc.innerText = `Your Hand: ${evalRes.name}`;
+      }
+    }
+  }
+
+  clearCheat() {
+    this.forcedRiverCard = null;
+    this.selectedCheatCard = null;
+    this.updateCheatIndicator();
+    this.closeCheatModal();
+    this.log('Cheat cleared: River will be dealt randomly.', 'system');
+  }
+
+  updateCheatIndicator() {
+    if (!this.riggedRiverIndicator) return;
+    if (this.forcedRiverCard && this.communityCards.length < 5) {
+      this.riggedRiverIndicator.style.display = 'inline-flex';
+      if (this.riggedCardVal) {
+        this.riggedCardVal.innerText = `${this.forcedRiverCard.rank}${this.forcedRiverCard.suit}`;
+        if (this.forcedRiverCard.color === 'red') {
+          this.riggedCardVal.classList.add('red');
+        } else {
+          this.riggedCardVal.classList.remove('red');
+        }
+      }
+    } else {
+      this.riggedRiverIndicator.style.display = 'none';
     }
   }
 
