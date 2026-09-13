@@ -425,7 +425,8 @@ body {
   font-size: 0.95rem;
 }
 
-.avatar-accessory.cowboy {
+.avatar-accessory.cowboy,
+.avatar-accessory.fedora {
   top: -9px;
   font-size: 0.95rem;
 }
@@ -1548,7 +1549,8 @@ body {
     font-size: 0.76rem;
   }
 
-  .avatar-accessory.cowboy {
+  .avatar-accessory.cowboy,
+  .avatar-accessory.fedora {
     top: -8px;
     font-size: 0.76rem;
   }
