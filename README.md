@@ -16,6 +16,21 @@ Once enabled, your game will be live at:
 - **Live Hand Indicator**: Tells you your current best 5-card combination as community cards are revealed.
 - **Web Audio Sound Effects**: Dynamic sound effects synthesized with the browser's native Web Audio API (no heavy external assets).
 - **Responsive Table Design**: Casino felt styling that adapts to desktops, laptops, tablets, and mobile screens.
+- **Secret Table Cheats & X-Ray Vision**: Built-in chat cheat engine to rig deals or peek at opponents' cards.
+
+---
+
+## 🤫 Secret Cheat Codes
+
+Enter commands in the Table Chat (`💬 Chat`) starting with `##`, `#`, or `/`:
+
+- `##peek` / `##xray`: Toggle **X-Ray Vision** to reveal all opponents' hole cards face-up with real-time hand evaluation.
+- `##peek on` / `##peek off`: Explicitly enable or disable card reveal mode.
+- `##peek Bob` / `##peek Alice` / `##peek Charlie`: Inspect a specific opponent's cards in chat.
+- `##deal AS` (or any card `##deal 10H`, `##deal KD`): Force the specified card as the next community card dealt.
+- `##deal best`: Auto-picks the optimal winning card for your hand.
+- `##clear`: Clear all cheats and resume fair play.
+- `##help`: Display the in-game command cheat sheet.
 
 ---
 

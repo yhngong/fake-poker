@@ -8,19 +8,19 @@ const SUITS = [
 ];
 
 const RANKS = [
-  { rank: '2', val: 1093 },
-  { rank: '3', val: 100 },
-  { rank: '4', val: 14 },
-  { rank: '5', val: 121 },
-  { rank: '6', val: 167 },
-  { rank: '7', val: 118 },
-  { rank: '8', val: 133 },
-  { rank: '9', val: 108 },
-  { rank: '10', val: 124 },
-  { rank: 'J', val: 156 },
-  { rank: 'Q', val: 112 },
-  { rank: 'K', val: 111 },
-  { rank: 'A', val: 187 }
+  { rank: '2', val: 2 },
+  { rank: '3', val: 3 },
+  { rank: '4', val: 4 },
+  { rank: '5', val: 5 },
+  { rank: '6', val: 6 },
+  { rank: '7', val: 7 },
+  { rank: '8', val: 8 },
+  { rank: '9', val: 9 },
+  { rank: '10', val: 10 },
+  { rank: 'J', val: 11 },
+  { rank: 'Q', val: 12 },
+  { rank: 'K', val: 13 },
+  { rank: 'A', val: 14 }
 ];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -454,6 +454,7 @@ class PokerGame {
     this.botTimeout = null;
     this.forcedCardQueue = [];
     this.burnedCards = [];
+    this.peekCheat = false;
 
     this.bindDOM();
   }
@@ -485,6 +486,8 @@ class PokerGame {
     this.riggedRiverIndicator = document.getElementById('rigged-river-indicator');
     this.riggedCardVal = document.getElementById('rigged-card-val');
     this.cancelRiggedBtn = document.getElementById('cancel-rigged-btn');
+    this.peekIndicator = document.getElementById('peek-indicator');
+    this.cancelPeekBtn = document.getElementById('cancel-peek-btn');
     this.chatForm = document.getElementById('chat-form');
     this.chatInput = document.getElementById('chat-input');
     this.chatSendBtn = document.getElementById('chat-send-btn');
@@ -525,6 +528,17 @@ class PokerGame {
     }
     if (this.riggedRiverIndicator) {
       this.riggedRiverIndicator.addEventListener('click', () => {
+        this.toggleChat(true);
+      });
+    }
+    if (this.cancelPeekBtn) {
+      this.cancelPeekBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.setPeekCheat(false);
+      });
+    }
+    if (this.peekIndicator) {
+      this.peekIndicator.addEventListener('click', () => {
         this.toggleChat(true);
       });
     }
@@ -717,7 +731,13 @@ class PokerGame {
         this.handRankDesc.style.display = 'block';
       }
     } else {
-      cardsEl.appendChild(this.renderCardDOM(null, true, true));
+      if (this.peekCheat) {
+        const cardEl = this.renderCardDOM(card, false, true);
+        cardEl.classList.add('card-peeked');
+        cardsEl.appendChild(cardEl);
+      } else {
+        cardsEl.appendChild(this.renderCardDOM(null, true, true));
+      }
     }
   }
 
@@ -1374,7 +1394,9 @@ class PokerGame {
     // 8. Clear cheat state
     this.forcedCardQueue = [];
     this.burnedCards = [];
+    this.peekCheat = false;
     this.updateCheatIndicator();
+    this.updatePeekIndicator();
   }
 
   // --- TABLE CHAT & CHEAT ENGINE (##deal AS / ##force AS) ---
@@ -1572,17 +1594,47 @@ class PokerGame {
       }
 
       this.applyForcedCards(cards);
+    } else if (['peek', 'see', 'xray', 'x-ray', 'spy', 'reveal', 'cards', 'hands', 'show', 'god', 'godmode', 'botcards', 'look'].includes(action)) {
+      const sub = rest.toLowerCase();
+      if (sub === 'off' || sub === 'disable' || sub === 'hide' || sub === 'false') {
+        this.setPeekCheat(false);
+      } else if (sub === 'on' || sub === 'enable' || sub === 'true') {
+        this.setPeekCheat(true);
+      } else if (sub === 'toggle') {
+        this.togglePeekCheat();
+      } else if (sub.length > 0 && this.players.some(p => !p.isHuman && p.name.toLowerCase() === sub)) {
+        const matchedBot = this.players.find(p => !p.isHuman && p.name.toLowerCase() === sub);
+        if (!this.peekCheat) {
+          this.setPeekCheat(true, true);
+        }
+        if (matchedBot.holeCards && matchedBot.holeCards.length > 0) {
+          const cardsStr = matchedBot.holeCards.map(c => `${c.rank}${c.suit}`).join(' ');
+          let handStr = '';
+          if (this.communityCards.length >= 3) {
+            const evalRes = HandEvaluator.evaluate7([...matchedBot.holeCards, ...this.communityCards]);
+            handStr = ` (${evalRes.name})`;
+          }
+          this.log(`👁️ ${matchedBot.name}'s Cards: ${cardsStr}${matchedBot.folded ? ' [Folded]' : ''}${handStr}`, 'winner');
+        } else {
+          this.log(`👁️ ${matchedBot.name} has no cards dealt yet.`, 'system');
+        }
+      } else {
+        // Toggle peek cheat
+        this.togglePeekCheat();
+      }
+    } else if (action === 'unpeek' || action === 'hide') {
+      this.setPeekCheat(false);
     } else if (action === 'clear' || action === 'unforce' || action === 'fair' || action === 'reset') {
       this.clearCheat();
     } else if (action === 'help') {
-      this.log('🃏 Commands:\n• ##deal AS (Deals Ace of Spades as next card)\n• ##deal 10H (Deals 10 of Hearts as next card)\n• ##deal best (Auto-picks best winning next card)\n• ##clear (Cancel cheat and play fair)', 'system');
+      this.log('🃏 Commands:\n• ##deal AS (Deals Ace of Spades as next card)\n• ##deal 10H (Deals 10 of Hearts as next card)\n• ##deal best (Auto-picks best winning next card)\n• ##peek (Toggle seeing all opponents\' cards)\n• ##peek on / ##peek off (Turn reveal on/off)\n• ##peek Bob (Peek at Bob\'s cards)\n• ##clear (Cancel cheats and play fair)', 'system');
     } else {
       // Check if user typed card shorthand directly e.g. ##AS or ##10H
       const directCards = this.parseCheatCards(clean);
       if (directCards.length > 0) {
         this.applyForcedCards(directCards);
       } else {
-        this.log(`Unknown command "${rawCmd}". Type ##help or ##deal AS.`, 'system');
+        this.log(`Unknown command "${rawCmd}". Type ##help, ##deal AS, or ##peek.`, 'system');
       }
     }
   }
@@ -1669,10 +1721,108 @@ class PokerGame {
     }
   }
 
-  clearCheat() {
+  clearCheat(clearPeek = true) {
     this.returnQueueCardsToDeck();
+    if (clearPeek && this.peekCheat) {
+      this.peekCheat = false;
+      this.updatePeekCards();
+    }
     this.updateCheatIndicator();
-    this.log('Cheat cleared: Cards will be dealt fairly.', 'system');
+    this.updatePeekIndicator();
+    this.log('Cheat cleared: Playing fair.', 'system');
+  }
+
+  setPeekCheat(enable, quiet = false) {
+    this.peekCheat = !!enable;
+    this.updatePeekIndicator();
+    this.updatePeekCards();
+    if (!quiet) {
+      if (this.peekCheat) {
+        sounds.playCardFlip();
+        this.log('👁️ X-Ray Vision ON: All opponents\' cards are now visible!', 'winner');
+        this.logOpponentHands();
+      } else {
+        this.log('👁️ X-Ray Vision OFF: Opponents\' cards are hidden.', 'system');
+      }
+    }
+  }
+
+  togglePeekCheat(targetState = null) {
+    const newState = targetState !== null ? !!targetState : !this.peekCheat;
+    this.setPeekCheat(newState);
+  }
+
+  updatePeekIndicator() {
+    if (!this.peekIndicator) return;
+    this.peekIndicator.style.display = this.peekCheat ? 'inline-flex' : 'none';
+  }
+
+  updatePeekCards() {
+    this.players.forEach(p => {
+      if (!p.isHuman) {
+        const cardsEl = document.getElementById(`cards-${p.id}`);
+        const statusEl = document.getElementById(`status-${p.id}`);
+        if (cardsEl && p.holeCards && p.holeCards.length > 0 && !this.roundOver && !p.cardsRevealed) {
+          cardsEl.innerHTML = '';
+          if (this.peekCheat) {
+            p.holeCards.forEach(c => {
+              const cardEl = this.renderCardDOM(c);
+              cardEl.classList.add('card-peeked');
+              if (p.folded) cardEl.classList.add('card-folded');
+              cardsEl.appendChild(cardEl);
+            });
+          } else {
+            const c1 = this.renderCardDOM(null, true);
+            const c2 = this.renderCardDOM(null, true);
+            if (p.folded) {
+              c1.classList.add('card-folded');
+              c2.classList.add('card-folded');
+            }
+            cardsEl.appendChild(c1);
+            cardsEl.appendChild(c2);
+          }
+        }
+        if (statusEl && !p.folded && !this.roundOver && !p.cardsRevealed) {
+          if (p.allIn) {
+            if (this.peekCheat && this.communityCards.length >= 3 && p.holeCards.length >= 2) {
+              const evalResult = HandEvaluator.evaluate7([...p.holeCards, ...this.communityCards]);
+              statusEl.innerText = `All-In (👁️ ${evalResult.name})`;
+            } else {
+              statusEl.innerText = 'All-In';
+            }
+          } else if (this.peekCheat && this.communityCards.length >= 3 && p.holeCards.length >= 2) {
+            const evalResult = HandEvaluator.evaluate7([...p.holeCards, ...this.communityCards]);
+            statusEl.innerText = `👁️ ${evalResult.name}`;
+          } else if (!this.peekCheat) {
+            statusEl.innerText = this.phase === 'IDLE' ? 'Ready' : 'In Hand';
+          }
+        }
+      }
+    });
+  }
+
+  logOpponentHands() {
+    const opponents = this.players.filter(p => !p.isHuman);
+    const hasAnyCards = opponents.some(p => p.holeCards && p.holeCards.length > 0);
+    if (!hasAnyCards) {
+      this.log('ℹ️ Opponents\' cards will automatically appear as soon as the next hand is dealt.', 'system');
+      return;
+    }
+
+    const lines = opponents.map(p => {
+      if (!p.holeCards || p.holeCards.length === 0) {
+        return `• ${p.name}: (No cards dealt)`;
+      }
+      const cardsStr = p.holeCards.map(c => `${c.rank}${c.suit}`).join(' ');
+      const statusNote = p.folded ? ' [Folded]' : (p.allIn ? ' [All-In]' : '');
+      let handStr = '';
+      if (this.communityCards.length >= 3) {
+        const evalRes = HandEvaluator.evaluate7([...p.holeCards, ...this.communityCards]);
+        handStr = ` (${evalRes.name})`;
+      }
+      return `• ${p.name}: ${cardsStr}${statusNote}${handStr}`;
+    });
+    this.log(`Opponents' Hands:\n${lines.join('\n')}`, 'system');
   }
 
   updateCheatIndicator() {
@@ -1810,12 +1960,14 @@ class PokerGame {
     const lower = userMessage.toLowerCase();
 
     let reply = '';
-    if (lower.includes('cheat') || lower.includes('force') || lower.includes('deal') || lower.includes('rig') || lower.includes('hack')) {
+    if (lower.includes('cheat') || lower.includes('force') || lower.includes('deal') || lower.includes('rig') || lower.includes('hack') || lower.includes('peek') || lower.includes('xray') || lower.includes('x-ray') || lower.includes('spy')) {
       const cheatReplies = [
         "Hey... did the dealer just wink at you?",
         "Are you sliding cards out of your sleeve?!",
         "The probability of that hand is statistically suspicious...",
-        "I'm keeping my eyes on your hands!"
+        "I'm keeping my eyes on your hands!",
+        "Stop peeking over my chips!",
+        "Why do I feel like you know exactly what cards I have?"
       ];
       reply = cheatReplies[Math.floor(Math.random() * cheatReplies.length)];
     } else if (lower.includes('all in') || lower.includes('all-in') || lower.includes('shove')) {
@@ -1920,7 +2072,12 @@ class PokerGame {
         cardsEl.querySelectorAll('.card').forEach(c => c.classList.add('card-folded'));
       } else if (p.allIn) {
         if (statusEl) {
-          statusEl.innerText = 'All-In';
+          if ((p.cardsRevealed || (this.peekCheat && !p.isHuman)) && this.communityCards.length >= 3 && p.holeCards.length >= 2) {
+            const evalResult = HandEvaluator.evaluate7([...p.holeCards, ...this.communityCards]);
+            statusEl.innerText = this.peekCheat && !p.cardsRevealed ? `All-In (👁️ ${evalResult.name})` : `All-In (${evalResult.name})`;
+          } else {
+            statusEl.innerText = 'All-In';
+          }
           statusEl.className = 'player-status';
         }
       } else if (statusEl) {
@@ -1934,9 +2091,9 @@ class PokerGame {
             statusEl.innerText = isWinner ? '🏆 Winner' : 'Active';
             statusEl.className = isWinner ? 'player-status winner-text' : 'player-status';
           }
-        } else if (p.cardsRevealed && this.communityCards.length >= 3) {
+        } else if ((p.cardsRevealed || (this.peekCheat && !p.isHuman)) && this.communityCards.length >= 3 && p.holeCards.length >= 2) {
           const evalResult = HandEvaluator.evaluate7([...p.holeCards, ...this.communityCards]);
-          statusEl.innerText = evalResult.name;
+          statusEl.innerText = this.peekCheat && !p.cardsRevealed ? `👁️ ${evalResult.name}` : evalResult.name;
           statusEl.className = 'player-status';
         } else {
           statusEl.innerText = this.phase === 'IDLE' ? 'Ready' : 'In Hand';
@@ -1948,11 +2105,14 @@ class PokerGame {
       if (refreshCards && newCommunityIdx === -1) {
         cardsEl.innerHTML = '';
         if (p.holeCards.length > 0) {
-          if (p.isHuman || this.roundOver || p.cardsRevealed) {
+          if (p.isHuman || this.roundOver || p.cardsRevealed || this.peekCheat) {
             p.holeCards.forEach(c => {
               const cardEl = this.renderCardDOM(c);
               if (p.folded) {
                 cardEl.classList.add('card-folded');
+              }
+              if (!p.isHuman && !p.cardsRevealed && !this.roundOver && this.peekCheat) {
+                cardEl.classList.add('card-peeked');
               }
               cardsEl.appendChild(cardEl);
             });

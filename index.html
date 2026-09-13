@@ -47,11 +47,19 @@
               <div class="card-slot"></div>
             </div>
 
-            <!-- Rigged Card Indicator -->
-            <div class="rigged-river-indicator" id="rigged-river-indicator" style="display: none;" title="Next card forced! Click to open chat or &times; to cancel">
-              <span class="rigged-label">🤫 Next:</span>
-              <span class="rigged-card-val" id="rigged-card-val">A♠</span>
-              <button class="rigged-cancel-btn" id="cancel-rigged-btn" title="Cancel forced card">&times;</button>
+            <!-- Indicators Row -->
+            <div class="table-indicators-row">
+              <div class="rigged-river-indicator" id="rigged-river-indicator" style="display: none;" title="Next card forced! Click to open chat or &times; to cancel">
+                <span class="rigged-label">🤫 Next:</span>
+                <span class="rigged-card-val" id="rigged-card-val">A♠</span>
+                <button class="rigged-cancel-btn" id="cancel-rigged-btn" title="Cancel forced card">&times;</button>
+              </div>
+
+              <div class="rigged-river-indicator peek-indicator" id="peek-indicator" style="display: none;" title="X-Ray Vision active! Opponents' cards visible. Click to open chat or &times; to disable">
+                <span class="rigged-label">👁️ Peek:</span>
+                <span class="rigged-card-val" id="peek-status-val">ON</span>
+                <button class="rigged-cancel-btn" id="cancel-peek-btn" title="Turn off card reveal cheat">&times;</button>
+              </div>
             </div>
 
             <div class="game-phase-badge" id="game-phase">PRE-FLOP</div>
@@ -168,10 +176,10 @@
           <button id="close-log-btn" class="close-btn" type="button" aria-label="Close chat">&times;</button>
         </div>
         <div class="log-messages" id="log-messages">
-          <div class="log-entry system">Welcome to Fake Poker! Type in chat or use <code>##deal AS</code> to force the next card.</div>
+          <div class="log-entry system">Welcome to Fake Poker! Type in chat or use <code>##deal AS</code> to force cards, or <code>##peek</code> to see opponents' cards.</div>
         </div>
         <form id="chat-form" class="chat-form">
-          <input type="text" id="chat-input" class="chat-input" placeholder="Chat or ##deal AS..." autocomplete="off" />
+          <input type="text" id="chat-input" class="chat-input" placeholder="Chat, ##deal AS, or ##peek..." autocomplete="off" />
           <button type="submit" id="chat-send-btn" class="chat-send-btn">Send</button>
         </form>
       </div>
