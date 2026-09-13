@@ -375,7 +375,7 @@ class PokerGame {
     this.humanRaisedThisHand = false;
     this.gameSessionId = 0;
     this.botTimeout = null;
-    this.forcedRiverCard = null;
+    this.forcedCardQueue = [];
 
     this.bindDOM();
   }
@@ -578,12 +578,20 @@ class PokerGame {
     // Round 1: 1 card to each player starting clockwise from Small Blind
     for (let i = 0; i < this.players.length; i++) {
       const pIdx = (this.dealerIdx + 1 + i) % this.players.length;
-      this.players[pIdx].holeCards.push(this.deck.pop());
+      if (this.players[pIdx].isHuman && this.forcedCardQueue.length > 0) {
+        this.players[pIdx].holeCards.push(this.drawCard(true));
+      } else {
+        this.players[pIdx].holeCards.push(this.deck.pop());
+      }
     }
     // Round 2: 2nd card to each player starting clockwise from Small Blind
     for (let i = 0; i < this.players.length; i++) {
       const pIdx = (this.dealerIdx + 1 + i) % this.players.length;
-      this.players[pIdx].holeCards.push(this.deck.pop());
+      if (this.players[pIdx].isHuman && this.forcedCardQueue.length > 0) {
+        this.players[pIdx].holeCards.push(this.drawCard(true));
+      } else {
+        this.players[pIdx].holeCards.push(this.deck.pop());
+      }
     }
 
     sounds.playCard();
@@ -1055,21 +1063,21 @@ class PokerGame {
       if (sessionId !== this.gameSessionId) return;
 
       // Card 1
-      this.communityCards.push(this.deck.pop());
+      this.communityCards.push(this.drawCard());
       sounds.playCard();
       this.updateUI(true);
       await sleep(400);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 2
-      this.communityCards.push(this.deck.pop());
+      this.communityCards.push(this.drawCard());
       sounds.playCard();
       this.updateUI(true);
       await sleep(400);
       if (sessionId !== this.gameSessionId) return;
 
       // Card 3
-      this.communityCards.push(this.deck.pop());
+      this.communityCards.push(this.drawCard());
       sounds.playCard();
       this.updateUI(true);
       await sleep(750); // Pause to assess the full flop
@@ -1082,7 +1090,7 @@ class PokerGame {
       await sleep(850); // Suspenseful pause before the Turn!
       if (sessionId !== this.gameSessionId) return;
 
-      this.communityCards.push(this.deck.pop());
+      this.communityCards.push(this.drawCard());
       sounds.playCard();
       this.updateUI(true);
       await sleep(750);
@@ -1095,22 +1103,7 @@ class PokerGame {
       await sleep(950); // Suspenseful pause before the River!
       if (sessionId !== this.gameSessionId) return;
 
-      let riverCard;
-      if (this.forcedRiverCard) {
-        const idx = this.deck.findIndex(c => c.suit === this.forcedRiverCard.suit && c.val === this.forcedRiverCard.val);
-        if (idx !== -1) {
-          riverCard = this.deck.splice(idx, 1)[0];
-        } else {
-          riverCard = { ...this.forcedRiverCard };
-        }
-        this.log(`🤫 River dealt: ${riverCard.rank}${riverCard.suit} (Rigged)!`, 'winner');
-        this.forcedRiverCard = null;
-        this.updateCheatIndicator();
-      } else {
-        riverCard = this.deck.pop();
-      }
-
-      this.communityCards.push(riverCard);
+      this.communityCards.push(this.drawCard());
       sounds.playCard();
       this.updateUI(true);
       await sleep(800);
@@ -1190,7 +1183,7 @@ class PokerGame {
     this.phase = 'IDLE';
     this.roundOver = true;
     this.lastWinners = winners;
-    this.forcedRiverCard = null;
+    this.forcedCardQueue = [];
     this.updateCheatIndicator();
     this.bettingControls.style.display = 'none';
     this.startControls.style.display = 'flex';
@@ -1257,11 +1250,32 @@ class PokerGame {
     }
 
     // 8. Clear cheat state
-    this.forcedRiverCard = null;
+    this.forcedCardQueue = [];
     this.updateCheatIndicator();
   }
 
-  // --- TABLE CHAT & CHEAT ENGINE (##force AS) ---
+  // --- TABLE CHAT & CHEAT ENGINE (##deal AS / ##force AS) ---
+
+  drawCard(isHoleCard = false) {
+    if (this.forcedCardQueue.length > 0) {
+      const targetCard = this.forcedCardQueue.shift();
+      this.updateCheatIndicator();
+
+      const idx = this.deck.findIndex(c => c.suit === targetCard.suit && c.val === targetCard.val);
+      let card;
+      if (idx !== -1) {
+        card = this.deck.splice(idx, 1)[0];
+      } else {
+        card = { ...targetCard };
+      }
+
+      const dest = isHoleCard ? 'your hand' : 'the board';
+      this.log(`🤫 Next card dealt to ${dest}: ${card.rank}${card.suit} (Rigged)!`, 'winner');
+      return card;
+    }
+
+    return this.deck.pop();
+  }
 
   parseCheatCard(str) {
     if (!str || typeof str !== 'string') return null;
@@ -1304,6 +1318,17 @@ class PokerGame {
     };
   }
 
+  parseCheatCards(str) {
+    if (!str || typeof str !== 'string') return [];
+    const tokens = str.trim().split(/\s+/);
+    const cards = [];
+    for (const tok of tokens) {
+      const card = this.parseCheatCard(tok);
+      if (card) cards.push(card);
+    }
+    return cards;
+  }
+
   handleChatSubmit(e) {
     if (e) e.preventDefault();
     if (!this.chatInput) return;
@@ -1328,63 +1353,66 @@ class PokerGame {
     const clean = rawCmd.trim().replace(/^(?:##|#|\/)/, '').trim();
     const parts = clean.split(/\s+/);
     const action = parts[0].toLowerCase();
-    const arg = parts.slice(1).join(' ').trim();
+    const rest = parts.slice(1).join(' ').trim();
 
-    if (action === 'force') {
-      if (!arg) {
-        this.log('Usage: ##force <Card> (e.g. ##force AS, ##force 10H, ##force KD, ##force 2C) or ##force best', 'system');
+    if (action === 'deal' || action === 'force') {
+      if (!rest) {
+        this.log('Usage: ##deal <Card> (e.g. ##deal AS, ##deal 10H, ##deal KD) or ##deal best', 'system');
         return;
       }
 
-      if (arg.toLowerCase() === 'best' || arg.toLowerCase() === 'auto') {
-        const best = this.findBestRiverCardForHuman();
+      if (rest.toLowerCase() === 'best' || rest.toLowerCase() === 'auto') {
+        const best = this.findBestNextCardForHuman();
         if (!best || !best.card) {
           this.log('Cannot auto-detect best card: Start a hand and deal cards first!', 'system');
           return;
         }
-        this.applyForcedCard(best.card, `✨ Auto-best: ${best.eval ? best.eval.name : ''}`);
+        this.applyForcedCards([best.card], `✨ Auto-best: ${best.eval ? best.eval.name : ''}`);
         return;
       }
 
-      const card = this.parseCheatCard(arg);
-      if (!card) {
-        this.log(`❌ Invalid card "${arg}". Format: [Rank][Suit] e.g. ##force AS, ##force 10H, ##force 7D, ##force 2C`, 'system');
+      const cards = this.parseCheatCards(rest);
+      if (cards.length === 0) {
+        this.log(`❌ Invalid card "${rest}". Format: [Rank][Suit] e.g. ##deal AS, ##deal 10H, ##deal 7D, ##deal 2C`, 'system');
         return;
       }
 
-      this.applyForcedCard(card);
+      this.applyForcedCards(cards);
     } else if (action === 'clear' || action === 'unforce' || action === 'fair' || action === 'reset') {
       this.clearCheat();
     } else if (action === 'help') {
-      this.log('🃏 Commands:\n• ##force AS (Force Ace of Spades on river)\n• ##force 10H (Force 10 of Hearts)\n• ##force best (Auto-pick best winning river card)\n• ##clear (Cancel forced card)', 'system');
+      this.log('🃏 Commands:\n• ##deal AS (Deals Ace of Spades as next card)\n• ##deal 10H (Deals 10 of Hearts as next card)\n• ##deal best (Auto-picks best winning next card)\n• ##clear (Cancel cheat and play fair)', 'system');
     } else {
-      // Check if user typed card shorthand directly e.g. ##AS or #10H
-      const directCard = this.parseCheatCard(clean);
-      if (directCard) {
-        this.applyForcedCard(directCard);
+      // Check if user typed card shorthand directly e.g. ##AS or ##10H
+      const directCards = this.parseCheatCards(clean);
+      if (directCards.length > 0) {
+        this.applyForcedCards(directCards);
       } else {
-        this.log(`Unknown command "${rawCmd}". Type ##help or ##force AS.`, 'system');
+        this.log(`Unknown command "${rawCmd}". Type ##help or ##deal AS.`, 'system');
       }
     }
   }
 
-  applyForcedCard(card, extraNote = '') {
+  applyForcedCards(cards, extraNote = '') {
+    if (!cards || cards.length === 0) return;
+
     if (this.communityCards.length >= 5) {
-      // River already dealt on table: immediately swap it!
-      this.swapRiverCard(card, extraNote);
+      // All 5 board cards already dealt: swap the river card immediately!
+      this.swapRiverCard(cards[0], extraNote);
       return;
     }
 
-    this.forcedRiverCard = { ...card };
+    this.forcedCardQueue = [...cards];
     this.updateCheatIndicator();
     sounds.playChip();
     const note = extraNote ? ` (${extraNote})` : '';
-    this.log(`🤫 River locked to ${card.rank}${card.suit}!${note}`, 'winner');
+    const cardsStr = cards.map(c => `${c.rank}${c.suit}`).join(', ');
+    this.log(`🤫 Next card to be dealt locked to ${cardsStr}!${note}`, 'winner');
   }
 
   swapRiverCard(card, extraNote = '') {
     if (this.communityCards.length < 5) {
-      this.forcedRiverCard = card;
+      this.forcedCardQueue = [card];
       this.updateCheatIndicator();
       return;
     }
@@ -1401,7 +1429,7 @@ class PokerGame {
     sounds.playCard();
     const note = extraNote ? ` (${extraNote})` : '';
     this.log(`🤫 River card replaced with ${card.rank}${card.suit}!${note}`, 'winner');
-    this.forcedRiverCard = null;
+    this.forcedCardQueue = [];
     this.updateCheatIndicator();
     this.updateUI(true);
 
@@ -1415,18 +1443,19 @@ class PokerGame {
   }
 
   clearCheat() {
-    this.forcedRiverCard = null;
+    this.forcedCardQueue = [];
     this.updateCheatIndicator();
-    this.log('Cheat cleared: River will be dealt fairly.', 'system');
+    this.log('Cheat cleared: Cards will be dealt fairly.', 'system');
   }
 
   updateCheatIndicator() {
     if (!this.riggedRiverIndicator) return;
-    if (this.forcedRiverCard && this.communityCards.length < 5) {
+    if (this.forcedCardQueue.length > 0) {
       this.riggedRiverIndicator.style.display = 'inline-flex';
       if (this.riggedCardVal) {
-        this.riggedCardVal.innerText = `${this.forcedRiverCard.rank}${this.forcedRiverCard.suit}`;
-        if (this.forcedRiverCard.color === 'red') {
+        this.riggedCardVal.innerText = this.forcedCardQueue.map(c => `${c.rank}${c.suit}`).join(' ');
+        const allRed = this.forcedCardQueue.every(c => c.color === 'red');
+        if (allRed) {
           this.riggedCardVal.classList.add('red');
         } else {
           this.riggedCardVal.classList.remove('red');
@@ -1437,13 +1466,13 @@ class PokerGame {
     }
   }
 
-  findBestRiverCardForHuman() {
+  findBestNextCardForHuman() {
     const human = this.players[0];
     if (!human || human.holeCards.length < 2) return null;
 
     const usedKeys = new Set();
     human.holeCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
-    const baseBoard = this.communityCards.slice(0, 4);
+    const baseBoard = this.communityCards.length >= 5 ? this.communityCards.slice(0, 4) : [...this.communityCards];
     baseBoard.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
 
     const candidates = [];
@@ -1511,6 +1540,10 @@ class PokerGame {
     return { card: bestCard, eval: bestHumanEval, beatsBots: bestScore ? bestScore.beatsBots : false };
   }
 
+  findBestRiverCardForHuman() {
+    return this.findBestNextCardForHuman();
+  }
+
   appendChatMessage(sender, text, className) {
     const div = document.createElement('div');
     div.className = `log-entry ${className}`;
@@ -1536,7 +1569,7 @@ class PokerGame {
     const lower = userMessage.toLowerCase();
 
     let reply = '';
-    if (lower.includes('cheat') || lower.includes('force') || lower.includes('rig') || lower.includes('hack')) {
+    if (lower.includes('cheat') || lower.includes('force') || lower.includes('deal') || lower.includes('rig') || lower.includes('hack')) {
       const cheatReplies = [
         "Hey... did the dealer just wink at you?",
         "Are you sliding cards out of your sleeve?!",
