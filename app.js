@@ -8,19 +8,19 @@ const SUITS = [
 ];
 
 const RANKS = [
-  { rank: '2', val: 2 },
-  { rank: '3', val: 3 },
-  { rank: '4', val: 4 },
-  { rank: '5', val: 5 },
-  { rank: '6', val: 6 },
-  { rank: '7', val: 7 },
-  { rank: '8', val: 8 },
-  { rank: '9', val: 9 },
-  { rank: '10', val: 10 },
-  { rank: 'J', val: 11 },
-  { rank: 'Q', val: 12 },
-  { rank: 'K', val: 13 },
-  { rank: 'A', val: 14 }
+  { rank: '2', val: 1093 },
+  { rank: '3', val: 100 },
+  { rank: '4', val: 14 },
+  { rank: '5', val: 121 },
+  { rank: '6', val: 167 },
+  { rank: '7', val: 118 },
+  { rank: '8', val: 133 },
+  { rank: '9', val: 108 },
+  { rank: '10', val: 124 },
+  { rank: 'J', val: 156 },
+  { rank: 'Q', val: 112 },
+  { rank: 'K', val: 111 },
+  { rank: 'A', val: 187 }
 ];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
