@@ -23,8 +23,7 @@
       </div>
       <div class="header-actions">
         <button id="sound-btn" class="icon-btn" title="Toggle Sound">🔊</button>
-        <button id="log-toggle-btn" class="icon-btn" title="View History">📜 Log</button>
-        <button id="cheat-toggle-btn" class="icon-btn cheat-btn" title="Dealer's Sleeve: Force the River Card">🤫 Cheat</button>
+        <button id="log-toggle-btn" class="icon-btn" title="Open Chat & History">💬 Chat</button>
         <button id="reset-game-btn" class="icon-btn reset-btn" title="Reset everything: chips, bot intelligence, and table state">🔄 Reset All</button>
       </div>
     </header>
@@ -49,7 +48,7 @@
             </div>
 
             <!-- Rigged River Card Indicator -->
-            <div class="rigged-river-indicator" id="rigged-river-indicator" style="display: none;" title="River card is rigged! Tap to change">
+            <div class="rigged-river-indicator" id="rigged-river-indicator" style="display: none;" title="River card forced! Click to open chat or &times; to cancel">
               <span class="rigged-label">🤫 River:</span>
               <span class="rigged-card-val" id="rigged-card-val">A♠</span>
               <button class="rigged-cancel-btn" id="cancel-rigged-btn" title="Cancel rigged card">&times;</button>
@@ -125,10 +124,10 @@
     <!-- Bottom Controls & Action Bar -->
     <footer class="controls-container">
       <!-- Live Ticker for Mobile -->
-      <div class="live-ticker" id="live-ticker" title="Tap to view full game history">
+      <div class="live-ticker" id="live-ticker" title="Tap to open chat & game history">
         <span class="ticker-dot"></span>
         <span class="ticker-text" id="ticker-text">Welcome to Fake Poker! Tap "Start Hand" to begin.</span>
-        <span class="ticker-action">📜 History</span>
+        <span class="ticker-action">💬 Chat</span>
       </div>
 
       <!-- Action Panel -->
@@ -162,74 +161,21 @@
         </div>
       </div>
 
-      <!-- History Log (Modal on mobile, side-panel on desktop) -->
+      <!-- History & Chat Panel (Bottom sheet on mobile, side-panel on desktop) -->
       <div class="log-panel" id="log-panel">
         <div class="log-header">
-          <span>Game History</span>
-          <button id="close-log-btn" class="close-btn" aria-label="Close history">&times;</button>
+          <span>Table Chat & History</span>
+          <button id="close-log-btn" class="close-btn" aria-label="Close chat">&times;</button>
         </div>
         <div class="log-messages" id="log-messages">
-          <div class="log-entry system">Welcome to Fake Poker! Click "Start Hand" to begin.</div>
+          <div class="log-entry system">Welcome to Fake Poker! Type in chat or use <code>##force AS</code> to force cards.</div>
         </div>
+        <form id="chat-form" class="chat-form">
+          <input type="text" id="chat-input" class="chat-input" placeholder="Chat or ##force AS..." autocomplete="off" />
+          <button type="submit" id="chat-send-btn" class="chat-send-btn">Send</button>
+        </form>
       </div>
     </footer>
-
-    <!-- Cheat Modal: Rig the River -->
-    <div class="modal-backdrop" id="cheat-modal" style="display: none;">
-      <div class="cheat-modal-content">
-        <div class="modal-header">
-          <div class="modal-title">
-            <span class="cheat-icon">🤫</span>
-            <h3>Dealer's Sleeve: Rig River</h3>
-          </div>
-          <button id="close-cheat-btn" class="close-btn" aria-label="Close cheat modal">&times;</button>
-        </div>
-
-        <div class="modal-body">
-          <p class="cheat-desc">Force the next <strong>River card</strong> to whatever you want, or let Auto-Rig find the card that wins you the hand!</p>
-          
-          <!-- Auto-Rig Button -->
-          <div class="cheat-quick-section">
-            <button id="auto-rig-btn" class="btn auto-rig-btn">
-              ✨ Auto-Rig (Best River for You)
-            </button>
-            <div id="cheat-auto-msg" class="cheat-auto-msg"></div>
-          </div>
-
-          <!-- Manual Selection -->
-          <div class="cheat-manual-section">
-            <div class="cheat-section-label">Or Pick a Specific Card:</div>
-            
-            <!-- Suit Tabs -->
-            <div class="suit-selector" id="cheat-suit-selector">
-              <button class="suit-tab active" data-suit="♠">♠ Spades</button>
-              <button class="suit-tab red" data-suit="♥">♥ Hearts</button>
-              <button class="suit-tab red" data-suit="♦">♦ Diamonds</button>
-              <button class="suit-tab" data-suit="♣">♣ Clubs</button>
-            </div>
-
-            <!-- Rank Grid -->
-            <div class="rank-grid" id="cheat-rank-grid">
-              <!-- Rendered via JS -->
-            </div>
-            
-            <!-- Selection Preview -->
-            <div class="cheat-selected-preview" id="cheat-selected-preview">
-              <div class="preview-line">
-                <span>Selected:</span>
-                <span id="cheat-preview-card" class="preview-badge">None</span>
-              </div>
-              <div id="cheat-preview-eval" class="preview-eval">Pick a card to see outcome</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button id="clear-cheat-btn" class="btn secondary-btn">Clear Cheat</button>
-          <button id="apply-cheat-btn" class="btn primary-btn" disabled>Lock In River Card</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script src="app.js"></script>

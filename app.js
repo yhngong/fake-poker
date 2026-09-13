@@ -376,8 +376,6 @@ class PokerGame {
     this.gameSessionId = 0;
     this.botTimeout = null;
     this.forcedRiverCard = null;
-    this.selectedCheatSuit = '♠';
-    this.selectedCheatCard = null;
 
     this.bindDOM();
   }
@@ -405,21 +403,13 @@ class PokerGame {
     this.liveTicker = document.getElementById('live-ticker');
     this.tickerText = document.getElementById('ticker-text');
 
-    // Cheat elements
-    this.cheatToggleBtn = document.getElementById('cheat-toggle-btn');
-    this.cheatModal = document.getElementById('cheat-modal');
-    this.closeCheatBtn = document.getElementById('close-cheat-btn');
-    this.autoRigBtn = document.getElementById('auto-rig-btn');
-    this.cheatAutoMsg = document.getElementById('cheat-auto-msg');
-    this.cheatSuitSelector = document.getElementById('cheat-suit-selector');
-    this.cheatRankGrid = document.getElementById('cheat-rank-grid');
-    this.cheatPreviewCard = document.getElementById('cheat-preview-card');
-    this.cheatPreviewEval = document.getElementById('cheat-preview-eval');
-    this.clearCheatBtn = document.getElementById('clear-cheat-btn');
-    this.applyCheatBtn = document.getElementById('apply-cheat-btn');
+    // Chat & River cheat elements
     this.riggedRiverIndicator = document.getElementById('rigged-river-indicator');
     this.riggedCardVal = document.getElementById('rigged-card-val');
     this.cancelRiggedBtn = document.getElementById('cancel-rigged-btn');
+    this.chatForm = document.getElementById('chat-form');
+    this.chatInput = document.getElementById('chat-input');
+    this.chatSendBtn = document.getElementById('chat-send-btn');
 
     // Unlock audio on first touch/click anywhere (iOS Safari / mobile policy)
     const unlockAudio = () => {
@@ -448,27 +438,7 @@ class PokerGame {
       this.resetAllAltBtn.addEventListener('click', handleResetAll);
     }
 
-    // Cheat menu events
-    if (this.cheatToggleBtn) {
-      this.cheatToggleBtn.addEventListener('click', () => this.openCheatModal());
-    }
-    if (this.closeCheatBtn) {
-      this.closeCheatBtn.addEventListener('click', () => this.closeCheatModal());
-    }
-    if (this.cheatModal) {
-      this.cheatModal.addEventListener('click', (e) => {
-        if (e.target === this.cheatModal) this.closeCheatModal();
-      });
-    }
-    if (this.autoRigBtn) {
-      this.autoRigBtn.addEventListener('click', () => this.autoRigRiver());
-    }
-    if (this.applyCheatBtn) {
-      this.applyCheatBtn.addEventListener('click', () => this.applyCheat());
-    }
-    if (this.clearCheatBtn) {
-      this.clearCheatBtn.addEventListener('click', () => this.clearCheat());
-    }
+    // River cheat indicator & Chat events
     if (this.cancelRiggedBtn) {
       this.cancelRiggedBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -476,17 +446,13 @@ class PokerGame {
       });
     }
     if (this.riggedRiverIndicator) {
-      this.riggedRiverIndicator.addEventListener('click', () => this.openCheatModal());
-    }
-    if (this.cheatSuitSelector) {
-      this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          this.selectedCheatSuit = tab.dataset.suit;
-          this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          this.renderCheatRankGrid();
-        });
+      this.riggedRiverIndicator.addEventListener('click', () => {
+        if (this.logPanel) this.logPanel.classList.add('open');
+        if (this.chatInput) this.chatInput.focus();
       });
+    }
+    if (this.chatForm) {
+      this.chatForm.addEventListener('submit', (e) => this.handleChatSubmit(e));
     }
 
     this.soundBtn.addEventListener('click', () => {
@@ -1224,6 +1190,8 @@ class PokerGame {
     this.phase = 'IDLE';
     this.roundOver = true;
     this.lastWinners = winners;
+    this.forcedRiverCard = null;
+    this.updateCheatIndicator();
     this.bettingControls.style.display = 'none';
     this.startControls.style.display = 'flex';
     this.startBtn.innerText = 'Next Hand';
@@ -1290,177 +1258,182 @@ class PokerGame {
 
     // 8. Clear cheat state
     this.forcedRiverCard = null;
-    this.selectedCheatCard = null;
     this.updateCheatIndicator();
   }
 
-  // --- CHEAT ENGINE (DEALER'S SLEEVE) ---
+  // --- TABLE CHAT & CHEAT ENGINE (##force AS) ---
 
-  openCheatModal() {
-    if (!this.cheatModal) return;
-    this.cheatModal.style.display = 'flex';
-    if (this.cheatAutoMsg) this.cheatAutoMsg.innerText = '';
-    
-    // Highlight selected suit tab
-    if (this.cheatSuitSelector) {
-      this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(tab => {
-        if (tab.dataset.suit === this.selectedCheatSuit) {
-          tab.classList.add('active');
-        } else {
-          tab.classList.remove('active');
-        }
-      });
-    }
+  parseCheatCard(str) {
+    if (!str || typeof str !== 'string') return null;
+    const clean = str.trim();
+    // Match rank (10, T, A, K, Q, J, 2-9) and suit (S, H, D, C or unicode ♠, ♥, ♦, ♣)
+    const match = clean.match(/^([2-9]|10|[AKQJT])\s*([SHDC♠♥♦♣])$/i);
+    if (!match) return null;
 
-    if (this.forcedRiverCard) {
-      this.selectedCheatSuit = this.forcedRiverCard.suit;
-      this.selectedCheatCard = { ...this.forcedRiverCard };
-    }
+    let rankStr = match[1].toUpperCase();
+    if (rankStr === 'T') rankStr = '10';
 
-    this.renderCheatRankGrid();
+    const suitChar = match[2].toUpperCase();
+    let suitSymbol = '♠';
+    let suitColor = 'black';
 
-    if (this.applyCheatBtn) {
-      if (this.communityCards.length >= 5) {
-        this.applyCheatBtn.innerText = 'Swap River Card Now';
-      } else {
-        this.applyCheatBtn.innerText = 'Lock In River Card';
-      }
-    }
-  }
-
-  closeCheatModal() {
-    if (this.cheatModal) {
-      this.cheatModal.style.display = 'none';
-    }
-  }
-
-  isCardInPlay(card) {
-    const human = this.players[0];
-    if (human && human.holeCards.some(c => c.suit === card.suit && c.val === card.val)) return true;
-    if (this.communityCards.some(c => c.suit === card.suit && c.val === card.val)) return true;
-    return false;
-  }
-
-  renderCheatRankGrid() {
-    if (!this.cheatRankGrid) return;
-    this.cheatRankGrid.innerHTML = '';
-
-    const ORDERED_RANKS = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
-    const isRed = this.selectedCheatSuit === '♥' || this.selectedCheatSuit === '♦';
-
-    ORDERED_RANKS.forEach(r => {
-      const rObj = RANKS.find(x => x.rank === r);
-      const card = {
-        suit: this.selectedCheatSuit,
-        rank: r,
-        val: rObj.val,
-        color: isRed ? 'red' : 'black'
-      };
-
-      const btn = document.createElement('button');
-      btn.className = 'rank-btn';
-      btn.innerText = r;
-      if (isRed) btn.style.color = 'var(--red-suit)';
-
-      const inPlay = this.isCardInPlay(card);
-      if (inPlay) {
-        btn.classList.add('in-play');
-        btn.title = `${r}${card.suit} is currently in play`;
-      }
-
-      if (this.selectedCheatCard && this.selectedCheatCard.suit === card.suit && this.selectedCheatCard.val === card.val) {
-        btn.classList.add('selected');
-      }
-
-      btn.addEventListener('click', () => {
-        this.selectCheatCard(card);
-      });
-
-      this.cheatRankGrid.appendChild(btn);
-    });
-
-    if (this.selectedCheatCard) {
-      this.updateCheatPreview(this.selectedCheatCard);
+    if (suitChar === 'S' || suitChar === '♠') {
+      suitSymbol = '♠';
+      suitColor = 'black';
+    } else if (suitChar === 'H' || suitChar === '♥') {
+      suitSymbol = '♥';
+      suitColor = 'red';
+    } else if (suitChar === 'D' || suitChar === '♦') {
+      suitSymbol = '♦';
+      suitColor = 'red';
+    } else if (suitChar === 'C' || suitChar === '♣') {
+      suitSymbol = '♣';
+      suitColor = 'black';
     } else {
-      if (this.cheatPreviewCard) {
-        this.cheatPreviewCard.innerText = 'None';
-        this.cheatPreviewCard.className = 'preview-badge';
-      }
-      if (this.cheatPreviewEval) {
-        this.cheatPreviewEval.innerText = 'Pick a card to see outcome';
-      }
-      if (this.applyCheatBtn) {
-        this.applyCheatBtn.disabled = true;
-      }
+      return null;
+    }
+
+    const rankObj = RANKS.find(r => r.rank === rankStr);
+    if (!rankObj) return null;
+
+    return {
+      rank: rankStr,
+      val: rankObj.val,
+      suit: suitSymbol,
+      color: suitColor
+    };
+  }
+
+  handleChatSubmit(e) {
+    if (e) e.preventDefault();
+    if (!this.chatInput) return;
+    const text = this.chatInput.value.trim();
+    if (!text) return;
+    this.chatInput.value = '';
+
+    // Check if command: starts with ##, #, or /
+    if (/^(?:##|#|\/)/.test(text)) {
+      this.handleChatCommand(text);
+    } else {
+      // Normal chat message
+      this.appendChatMessage('You', text, 'chat-human');
+      this.triggerBotChatReply(text);
     }
   }
 
-  selectCheatCard(card) {
-    this.selectedCheatCard = card;
-    this.selectedCheatSuit = card.suit;
+  handleChatCommand(rawCmd) {
+    // Show the command in chat log
+    this.log(rawCmd, 'cheat-cmd');
 
-    if (this.cheatRankGrid) {
-      this.cheatRankGrid.querySelectorAll('.rank-btn').forEach(btn => {
-        if (btn.innerText === card.rank) {
-          btn.classList.add('selected');
-        } else {
-          btn.classList.remove('selected');
+    const clean = rawCmd.trim().replace(/^(?:##|#|\/)/, '').trim();
+    const parts = clean.split(/\s+/);
+    const action = parts[0].toLowerCase();
+    const arg = parts.slice(1).join(' ').trim();
+
+    if (action === 'force') {
+      if (!arg) {
+        this.log('Usage: ##force <Card> (e.g. ##force AS, ##force 10H, ##force KD, ##force 2C) or ##force best', 'system');
+        return;
+      }
+
+      if (arg.toLowerCase() === 'best' || arg.toLowerCase() === 'auto') {
+        const best = this.findBestRiverCardForHuman();
+        if (!best || !best.card) {
+          this.log('Cannot auto-detect best card: Start a hand and deal cards first!', 'system');
+          return;
         }
-      });
-    }
+        this.applyForcedCard(best.card, `✨ Auto-best: ${best.eval ? best.eval.name : ''}`);
+        return;
+      }
 
-    this.updateCheatPreview(card);
-  }
+      const card = this.parseCheatCard(arg);
+      if (!card) {
+        this.log(`❌ Invalid card "${arg}". Format: [Rank][Suit] e.g. ##force AS, ##force 10H, ##force 7D, ##force 2C`, 'system');
+        return;
+      }
 
-  updateCheatPreview(card) {
-    if (this.cheatPreviewCard) {
-      this.cheatPreviewCard.innerText = `${card.rank}${card.suit}`;
-      this.cheatPreviewCard.className = `preview-badge ${card.color === 'red' ? 'red' : ''}`;
-    }
-
-    if (this.applyCheatBtn) {
-      this.applyCheatBtn.disabled = false;
-      this.applyCheatBtn.innerText = this.communityCards.length >= 5 ? 'Swap River Card Now' : 'Lock In River Card';
-    }
-
-    if (this.cheatPreviewEval) {
-      const human = this.players[0];
-      if (human && human.holeCards.length === 2) {
-        const baseBoard = this.communityCards.slice(0, 4);
-        const testHand = [...human.holeCards, ...baseBoard, card];
-        if (testHand.length >= 5) {
-          const evalRes = HandEvaluator.evaluate7(testHand);
-          this.cheatPreviewEval.innerText = `✨ Outcome: ${evalRes.name}`;
-        } else {
-          this.cheatPreviewEval.innerText = `Forces ${card.rank}${card.suit} on the river`;
-        }
+      this.applyForcedCard(card);
+    } else if (action === 'clear' || action === 'unforce' || action === 'fair' || action === 'reset') {
+      this.clearCheat();
+    } else if (action === 'help') {
+      this.log('🃏 Commands:\n• ##force AS (Force Ace of Spades on river)\n• ##force 10H (Force 10 of Hearts)\n• ##force best (Auto-pick best winning river card)\n• ##clear (Cancel forced card)', 'system');
+    } else {
+      // Check if user typed card shorthand directly e.g. ##AS or #10H
+      const directCard = this.parseCheatCard(clean);
+      if (directCard) {
+        this.applyForcedCard(directCard);
       } else {
-        this.cheatPreviewEval.innerText = `Forces ${card.rank}${card.suit} on the next river`;
+        this.log(`Unknown command "${rawCmd}". Type ##help or ##force AS.`, 'system');
       }
     }
   }
 
-  autoRigRiver() {
-    const res = this.findBestRiverCardForHuman();
-    if (!res || !res.card) {
-      if (this.cheatAutoMsg) {
-        this.cheatAutoMsg.innerText = 'Cannot auto-rig: deal cards first!';
-      }
+  applyForcedCard(card, extraNote = '') {
+    if (this.communityCards.length >= 5) {
+      // River already dealt on table: immediately swap it!
+      this.swapRiverCard(card, extraNote);
       return;
     }
 
-    this.selectedCheatSuit = res.card.suit;
-    if (this.cheatSuitSelector) {
-      this.cheatSuitSelector.querySelectorAll('.suit-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.suit === this.selectedCheatSuit);
-      });
+    this.forcedRiverCard = { ...card };
+    this.updateCheatIndicator();
+    sounds.playChip();
+    const note = extraNote ? ` (${extraNote})` : '';
+    this.log(`🤫 River locked to ${card.rank}${card.suit}!${note}`, 'winner');
+  }
+
+  swapRiverCard(card, extraNote = '') {
+    if (this.communityCards.length < 5) {
+      this.forcedRiverCard = card;
+      this.updateCheatIndicator();
+      return;
     }
 
-    this.renderCheatRankGrid();
-    this.selectCheatCard(res.card);
+    const oldCard = this.communityCards[4];
+    this.deck.push(oldCard);
+    const idx = this.deck.findIndex(c => c.suit === card.suit && c.val === card.val);
+    if (idx !== -1) {
+      this.communityCards[4] = this.deck.splice(idx, 1)[0];
+    } else {
+      this.communityCards[4] = { ...card };
+    }
 
-    if (this.cheatAutoMsg) {
-      this.cheatAutoMsg.innerText = `✨ Auto-detected ${res.card.rank}${res.card.suit}: ${res.eval.name} (${res.beatsBots ? 'Beats all bots' : 'Best hand'})!`;
+    sounds.playCard();
+    const note = extraNote ? ` (${extraNote})` : '';
+    this.log(`🤫 River card replaced with ${card.rank}${card.suit}!${note}`, 'winner');
+    this.forcedRiverCard = null;
+    this.updateCheatIndicator();
+    this.updateUI(true);
+
+    const human = this.players[0];
+    if (human && human.holeCards.length === 2) {
+      const evalRes = HandEvaluator.evaluate7([...human.holeCards, ...this.communityCards]);
+      if (this.handRankDesc) {
+        this.handRankDesc.innerText = `Your Hand: ${evalRes.name}`;
+      }
+    }
+  }
+
+  clearCheat() {
+    this.forcedRiverCard = null;
+    this.updateCheatIndicator();
+    this.log('Cheat cleared: River will be dealt fairly.', 'system');
+  }
+
+  updateCheatIndicator() {
+    if (!this.riggedRiverIndicator) return;
+    if (this.forcedRiverCard && this.communityCards.length < 5) {
+      this.riggedRiverIndicator.style.display = 'inline-flex';
+      if (this.riggedCardVal) {
+        this.riggedCardVal.innerText = `${this.forcedRiverCard.rank}${this.forcedRiverCard.suit}`;
+        if (this.forcedRiverCard.color === 'red') {
+          this.riggedCardVal.classList.add('red');
+        } else {
+          this.riggedCardVal.classList.remove('red');
+        }
+      }
+    } else {
+      this.riggedRiverIndicator.style.display = 'none';
     }
   }
 
@@ -1538,76 +1511,79 @@ class PokerGame {
     return { card: bestCard, eval: bestHumanEval, beatsBots: bestScore ? bestScore.beatsBots : false };
   }
 
-  applyCheat() {
-    if (!this.selectedCheatCard) return;
+  appendChatMessage(sender, text, className) {
+    const div = document.createElement('div');
+    div.className = `log-entry ${className}`;
+    const strong = document.createElement('strong');
+    strong.innerText = `${sender}: `;
+    const span = document.createElement('span');
+    span.innerText = text;
+    div.appendChild(strong);
+    div.appendChild(span);
+    this.logMessages.appendChild(div);
+    this.logMessages.scrollTop = this.logMessages.scrollHeight;
 
-    if (this.communityCards.length >= 5) {
-      this.swapRiverCard(this.selectedCheatCard);
-      this.closeCheatModal();
-      return;
+    if (this.tickerText) {
+      this.tickerText.innerText = `${sender}: ${text}`;
     }
-
-    this.forcedRiverCard = { ...this.selectedCheatCard };
-    this.updateCheatIndicator();
-    sounds.playChip();
-    this.log(`🤫 River locked to ${this.selectedCheatCard.rank}${this.selectedCheatCard.suit}!`, 'winner');
-    this.closeCheatModal();
   }
 
-  swapRiverCard(card) {
-    if (this.communityCards.length < 5) {
-      this.forcedRiverCard = card;
-      this.updateCheatIndicator();
-      return;
-    }
+  triggerBotChatReply(userMessage) {
+    const activeBots = this.players.filter(p => !p.isHuman && p.chips > 0);
+    if (activeBots.length === 0) return;
 
-    const oldCard = this.communityCards[4];
-    this.deck.push(oldCard);
-    const idx = this.deck.findIndex(c => c.suit === card.suit && c.val === card.val);
-    if (idx !== -1) {
-      this.communityCards[4] = this.deck.splice(idx, 1)[0];
+    const bot = activeBots[Math.floor(Math.random() * activeBots.length)];
+    const lower = userMessage.toLowerCase();
+
+    let reply = '';
+    if (lower.includes('cheat') || lower.includes('force') || lower.includes('rig') || lower.includes('hack')) {
+      const cheatReplies = [
+        "Hey... did the dealer just wink at you?",
+        "Are you sliding cards out of your sleeve?!",
+        "The probability of that hand is statistically suspicious...",
+        "I'm keeping my eyes on your hands!"
+      ];
+      reply = cheatReplies[Math.floor(Math.random() * cheatReplies.length)];
+    } else if (lower.includes('all in') || lower.includes('all-in') || lower.includes('shove')) {
+      const allInReplies = [
+        "Big talk for a big bet! Let's see it.",
+        "You're either holding the nuts or a huge bluff.",
+        "Gutsy move! Let's see how the cards fall."
+      ];
+      reply = allInReplies[Math.floor(Math.random() * allInReplies.length)];
+    } else if (lower.includes('fold') || lower.includes('give up')) {
+      reply = bot.name === 'Alice' ? "Fold? Never in my playbook!" : "I only fold when the math commands it.";
+    } else if (lower.includes('win') || lower.includes('gg') || lower.includes('good game')) {
+      reply = "The hand's not over till the river sings!";
     } else {
-      this.communityCards[4] = { ...card };
-    }
-
-    sounds.playCard();
-    this.log(`🤫 River card replaced with ${card.rank}${card.suit}!`, 'winner');
-    this.forcedRiverCard = null;
-    this.updateCheatIndicator();
-    this.updateUI(true);
-
-    const human = this.players[0];
-    if (human && human.holeCards.length === 2) {
-      const evalRes = HandEvaluator.evaluate7([...human.holeCards, ...this.communityCards]);
-      if (this.handRankDesc) {
-        this.handRankDesc.innerText = `Your Hand: ${evalRes.name}`;
+      // Persona-specific banter
+      if (bot.name === 'Alice') {
+        const aliceLines = [
+          "Talk is cheap, let's see some chips!",
+          "Don't get too comfortable, I'm gunning for your stack.",
+          "Aggression wins pots, remember that."
+        ];
+        reply = aliceLines[Math.floor(Math.random() * aliceLines.length)];
+      } else if (bot.name === 'Bob') {
+        const bobLines = [
+          "My pot odds calculations are never wrong.",
+          "Variance is real, but discipline prevails.",
+          "Statistically, I have a favorable expectation here."
+        ];
+        reply = bobLines[Math.floor(Math.random() * bobLines.length)];
+      } else {
+        const charlieLines = [
+          "I have no idea what I have, but I'm having a blast!",
+          "Any two cards can win, right?!",
+          "Let's gamble! Yeehaw!"
+        ];
+        reply = charlieLines[Math.floor(Math.random() * charlieLines.length)];
       }
     }
-  }
 
-  clearCheat() {
-    this.forcedRiverCard = null;
-    this.selectedCheatCard = null;
-    this.updateCheatIndicator();
-    this.closeCheatModal();
-    this.log('Cheat cleared: River will be dealt randomly.', 'system');
-  }
-
-  updateCheatIndicator() {
-    if (!this.riggedRiverIndicator) return;
-    if (this.forcedRiverCard && this.communityCards.length < 5) {
-      this.riggedRiverIndicator.style.display = 'inline-flex';
-      if (this.riggedCardVal) {
-        this.riggedCardVal.innerText = `${this.forcedRiverCard.rank}${this.forcedRiverCard.suit}`;
-        if (this.forcedRiverCard.color === 'red') {
-          this.riggedCardVal.classList.add('red');
-        } else {
-          this.riggedCardVal.classList.remove('red');
-        }
-      }
-    } else {
-      this.riggedRiverIndicator.style.display = 'none';
-    }
+    setTimeout(() => {
+      this.appendChatMessage(bot.name, reply, 'chat-bot');
+    }, 600 + Math.random() * 600);
   }
 
   updateUI(refreshCards = false) {
