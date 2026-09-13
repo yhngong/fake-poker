@@ -10,8 +10,3 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_classes = ["PokerRoom"]
-
-# Optional: Serves frontend static assets if hosted fully on Cloudflare Workers
-[assets]
-directory = "."
-binding = "ASSETS"

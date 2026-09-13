@@ -186,7 +186,7 @@ export class PokerRoom {
     const url = new URL(request.url);
 
     // WebSocket upgrade
-    if (request.headers.get('Upgrade') === 'websocket') {
+    if ((request.headers.get('Upgrade') || '').toLowerCase() === 'websocket') {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
@@ -358,12 +358,13 @@ export class PokerRoom {
         }
         break;
 
+      case 'join':
       case 'rename':
         if (msg.name && typeof msg.name === 'string') {
           seat.name = msg.name.trim().slice(0, 14);
-          if (msg.accessory) seat.accessory = msg.accessory;
-          this.broadcastState();
         }
+        if (msg.accessory) seat.accessory = msg.accessory;
+        this.broadcastState();
         break;
     }
   }
@@ -901,6 +902,14 @@ export default {
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
+    }
+
+    // Favicon handler
+    if (url.pathname === '/favicon.ico') {
+      const svgSpade = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">♠</text></svg>`;
+      return new Response(svgSpade, {
+        headers: { ...corsHeaders, 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' }
+      });
     }
 
     // Health / API status

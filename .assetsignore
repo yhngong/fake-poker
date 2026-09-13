@@ -1,6 +1,11 @@
-node_modules/
-.git/
-worker/
+.wrangler
+.wrangler/**
+node_modules
+node_modules/**
+.git
+.git/**
+worker
+worker/**
 package.json
 package-lock.json
 wrangler.toml
