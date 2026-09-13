@@ -447,8 +447,7 @@ class PokerGame {
     }
     if (this.riggedRiverIndicator) {
       this.riggedRiverIndicator.addEventListener('click', () => {
-        if (this.logPanel) this.logPanel.classList.add('open');
-        if (this.chatInput) this.chatInput.focus();
+        this.toggleChat(true);
       });
     }
     if (this.chatForm) {
@@ -460,23 +459,17 @@ class PokerGame {
       this.soundBtn.innerText = sounds.enabled ? '🔊' : '🔇';
     });
 
-    // Mobile Log Drawer / Modal Toggle
+    // Table Chat Toggle
     if (this.logToggleBtn) {
-      this.logToggleBtn.addEventListener('click', () => {
-        this.logPanel.classList.toggle('open');
-      });
+      this.logToggleBtn.addEventListener('click', () => this.toggleChat());
     }
 
     if (this.liveTicker) {
-      this.liveTicker.addEventListener('click', () => {
-        this.logPanel.classList.add('open');
-      });
+      this.liveTicker.addEventListener('click', () => this.toggleChat(true));
     }
 
     if (this.closeLogBtn) {
-      this.closeLogBtn.addEventListener('click', () => {
-        this.logPanel.classList.remove('open');
-      });
+      this.closeLogBtn.addEventListener('click', () => this.toggleChat(false));
     }
 
     this.foldBtn.addEventListener('click', () => this.handleAction('fold'));
@@ -1329,12 +1322,36 @@ class PokerGame {
     return cards;
   }
 
+  toggleChat(forceOpen = null) {
+    if (!this.logPanel) return;
+    const shouldOpen = forceOpen !== null ? forceOpen : !this.logPanel.classList.contains('open');
+    this.logPanel.classList.toggle('open', shouldOpen);
+
+    const gameContainer = document.querySelector('.game-container');
+    if (gameContainer) {
+      gameContainer.classList.toggle('chat-open', shouldOpen);
+    }
+    if (this.logToggleBtn) {
+      this.logToggleBtn.classList.toggle('active', shouldOpen);
+    }
+
+    if (shouldOpen) {
+      if (this.logMessages) {
+        this.logMessages.scrollTop = this.logMessages.scrollHeight;
+      }
+      if (this.chatInput && typeof this.chatInput.focus === 'function') {
+        setTimeout(() => this.chatInput.focus(), 50);
+      }
+    }
+  }
+
   handleChatSubmit(e) {
     if (e) e.preventDefault();
     if (!this.chatInput) return;
     const text = this.chatInput.value.trim();
     if (!text) return;
     this.chatInput.value = '';
+    this.toggleChat(true);
 
     // Check if command: starts with ##, #, or /
     if (/^(?:##|#|\/)/.test(text)) {

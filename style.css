@@ -121,6 +121,13 @@ body {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.icon-btn.active {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: var(--gold);
+  color: #fef08a;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
+}
+
 .primary-btn {
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: #111;
@@ -539,10 +546,13 @@ body {
 /* Bottom Controls */
 .controls-container {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
   margin-top: 6px;
   position: relative;
+  width: 100%;
 }
 
 /* Live Ticker Banner (Mobile & Desktop) */
@@ -558,6 +568,7 @@ body {
   cursor: pointer;
   touch-action: manipulation;
   width: 100%;
+  max-width: 680px;
 }
 
 .ticker-dot {
@@ -587,14 +598,18 @@ body {
 
 /* Action Panel */
 .action-panel {
-  flex: 1.4;
+  width: 100%;
+  max-width: 680px;
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  transition: all 0.2s ease;
 }
 
 .start-controls {
@@ -678,37 +693,63 @@ body {
   text-align: center;
 }
 
-/* History Log Panel (Desktop) */
+/* History Log & Chat Panel */
 .log-panel {
-  flex: 1;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: none;
+  width: 100%;
+  max-width: 680px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(245, 158, 11, 0.35);
   border-radius: 12px;
-  padding: 8px 12px;
-  height: 120px;
-  display: flex;
+  padding: 6px 12px 8px;
+  height: 135px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.12);
   flex-direction: column;
+  overflow: hidden;
+  z-index: 5;
+  animation: slide-from-under 0.2s ease-out;
+}
+
+.log-panel.open {
+  display: flex;
+}
+
+@keyframes slide-from-under {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .log-header {
-  display: none;
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--gold);
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: #fff;
-  font-size: 1.3rem;
+  color: #94a3b8;
+  font-size: 1.2rem;
   cursor: pointer;
   line-height: 1;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.close-btn:hover {
+  color: #ef4444;
 }
 
 .log-messages {
@@ -716,8 +757,9 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: 0.78rem;
+  gap: 2px;
+  font-size: 0.76rem;
+  padding-right: 4px;
   scrollbar-width: thin;
 }
 
@@ -729,6 +771,11 @@ body {
 .log-entry.system { color: #38bdf8; font-weight: 600; }
 .log-entry.winner { color: var(--gold); font-weight: 700; }
 .log-entry.action { color: #e2e8f0; }
+
+.chat-open .seat-bottom {
+  bottom: -16px;
+  transition: bottom 0.25s ease;
+}
 
 /* =========================================================
    CHEAT MENU & RIGGED RIVER STYLES
@@ -1006,16 +1053,23 @@ body {
   /* Controls layout */
   .controls-container {
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     height: auto;
+    width: 100%;
   }
 
   .live-ticker {
     display: flex;
+    transition: opacity 0.2s ease;
+  }
+
+  .chat-open .live-ticker {
+    display: none;
   }
 
   .action-panel {
     padding: 8px 10px;
+    width: 100%;
   }
 
   .bet-controls-top {
@@ -1049,35 +1103,90 @@ body {
     font-weight: 700;
   }
 
-  /* History Log Modal on Mobile */
+  /* History Log on Mobile: appears directly under the action buttons */
   .log-panel {
     display: none;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 60vh;
-    max-height: 420px;
-    background: #0f172a;
-    border-top: 2px solid var(--gold);
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.8);
-    z-index: 1000;
-    padding: 12px 16px env(safe-area-inset-bottom);
+    position: relative;
+    width: 100%;
+    height: 120px;
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+    padding: 5px 10px 6px;
+    animation: slide-from-under 0.2s ease-out;
   }
 
   .log-panel.open {
     display: flex;
-    animation: slide-up 0.25s ease-out;
-  }
-
-  @keyframes slide-up {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
   }
 
   .log-header {
     display: flex;
+    font-size: 0.74rem;
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+  }
+
+  .close-btn {
+    font-size: 1.1rem;
+    padding: 0 2px;
+  }
+
+  .log-messages {
+    font-size: 0.73rem;
+  }
+
+  .chat-form {
+    margin-top: 3px;
+    padding-top: 3px;
+  }
+
+  .chat-input {
+    font-size: 0.76rem;
+    padding: 4px 8px;
+  }
+
+  .chat-send-btn {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+  }
+
+  /* When Chat is open on mobile: push own cards up into felt and adjust table elements */
+  .seat-bottom {
+    transition: bottom 0.25s ease, transform 0.25s ease;
+  }
+
+  .chat-open .seat-bottom {
+    bottom: 34px;
+  }
+
+  .chat-open #cards-0 {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.5));
+    transition: transform 0.25s ease, filter 0.25s ease;
+  }
+
+  .table-center {
+    transition: transform 0.25s ease;
+  }
+
+  .chat-open .table-center {
+    transform: translateY(-12px);
+  }
+
+  .chat-open .seat-top {
+    top: 3px;
+  }
+
+  .chat-open .seat-left,
+  .chat-open .seat-right {
+    top: 6px;
+  }
+
+  .chat-open .table-wrapper {
+    padding: 2px 0;
   }
 }
 
@@ -1110,6 +1219,14 @@ body {
   .action-buttons-row .btn {
     font-size: 0.85rem;
     padding: 10px 0;
+  }
+
+  .chat-open .seat-bottom {
+    bottom: 28px;
+  }
+
+  .chat-open .log-panel {
+    height: 110px;
   }
 }
 
