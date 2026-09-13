@@ -10,3 +10,7 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_classes = ["PokerRoom"]
+
+[assets]
+directory = "public"
+binding = "ASSETS"
