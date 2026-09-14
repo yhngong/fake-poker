@@ -38,7 +38,7 @@ const BIG_BLIND = 20;
 // Authoritative 7-card Hand Evaluator
 class HandEvaluator {
   static evaluate7(cards) {
-    if (!cards || cards.length < 5) return { rankValue: -1, name: 'Incomplete' };
+    if (!cards || cards.length < 5) return { category: -1, tieBreakers: [], rankValue: -1, name: 'Incomplete' };
     const combos = this.combinations(cards, 5);
     let best = null;
     for (const combo of combos) {
@@ -132,11 +132,21 @@ class HandEvaluator {
   }
 
   static compare(a, b) {
-    if (a.category !== b.category) return a.category - b.category;
-    for (let i = 0; i < Math.max(a.tieBreakers.length, b.tieBreakers.length); i++) {
-      const tbA = a.tieBreakers[i] || 0;
-      const tbB = b.tieBreakers[i] || 0;
-      if (tbA !== tbB) return tbA - tbB;
+    if (!a && !b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
+
+    const catA = a.category !== undefined ? a.category : (a.rankValue !== undefined ? a.rankValue : -1);
+    const catB = b.category !== undefined ? b.category : (b.rankValue !== undefined ? b.rankValue : -1);
+    if (catA !== catB) return catA - catB;
+
+    const tbA = a.tieBreakers || [];
+    const tbB = b.tieBreakers || [];
+    const maxLen = Math.max(tbA.length, tbB.length);
+    for (let i = 0; i < maxLen; i++) {
+      const valA = tbA[i] !== undefined ? tbA[i] : 0;
+      const valB = tbB[i] !== undefined ? tbB[i] : 0;
+      if (valA !== valB) return valA - valB;
     }
     return 0;
   }
@@ -739,10 +749,15 @@ export class PokerRoom {
   }
 
   findBestNextCard(player) {
+    if (!player || player.holeCards.length < 2) return null;
+
     const usedKeys = new Set();
     this.seats.forEach(s => s.holeCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`)));
     this.communityCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
     this.burnedCards.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    if (this.forcedCardQueue) {
+      this.forcedCardQueue.forEach(c => usedKeys.add(`${c.val}_${c.suit}`));
+    }
 
     const candidates = [];
     for (const suit of SUITS) {
@@ -758,14 +773,28 @@ export class PokerRoom {
       }
     }
 
+    if (candidates.length === 0) return null;
+
     let bestOption = null;
     const baseBoard = this.communityCards.length >= 5 ? this.communityCards.slice(0, 4) : [...this.communityCards];
 
     for (const card of candidates) {
-      const testCards = [...player.holeCards, ...baseBoard, card];
-      const evaluation = HandEvaluator.evaluate7(testCards);
-      if (!bestOption || HandEvaluator.compare(evaluation, bestOption.eval) > 0) {
-        bestOption = { card, eval: evaluation };
+      // Pad testBoard so HandEvaluator has at least 5 board cards (7 total with hole cards)
+      const testBoard = [...baseBoard, card];
+      let padIdx = 0;
+      while (testBoard.length < 5 && padIdx < candidates.length) {
+        const dummy = candidates[padIdx++];
+        if (dummy !== card && !testBoard.some(b => b.val === dummy.val && b.suit === dummy.suit)) {
+          testBoard.push(dummy);
+        }
+      }
+
+      const evaluation = HandEvaluator.evaluate7([...player.holeCards, ...testBoard]);
+      const matchesHoleRank = player.holeCards.some(h => h.val === card.val);
+
+      if (!bestOption || HandEvaluator.compare(evaluation, bestOption.eval) > 0 ||
+          (HandEvaluator.compare(evaluation, bestOption.eval) === 0 && matchesHoleRank && !bestOption.matchesHoleRank)) {
+        bestOption = { card, eval: evaluation, matchesHoleRank };
       }
     }
     return bestOption;

@@ -190,7 +190,7 @@ const sounds = new SoundManager();
 // Hand Evaluator (7-card Texas Hold'em)
 class HandEvaluator {
   static evaluate7(cards) {
-    if (cards.length < 5) return { rankValue: -1, name: 'Incomplete' };
+    if (!cards || cards.length < 5) return { category: -1, tieBreakers: [], rankValue: -1, name: 'Incomplete' };
     const combos = this.combinations(cards, 5);
     let best = null;
     for (const combo of combos) {
@@ -286,11 +286,21 @@ class HandEvaluator {
   }
 
   static compare(a, b) {
-    if (a.category !== b.category) return a.category - b.category;
-    for (let i = 0; i < Math.max(a.tieBreakers.length, b.tieBreakers.length); i++) {
-      const tbA = a.tieBreakers[i] || 0;
-      const tbB = b.tieBreakers[i] || 0;
-      if (tbA !== tbB) return tbA - tbB;
+    if (!a && !b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
+
+    const catA = a.category !== undefined ? a.category : (a.rankValue !== undefined ? a.rankValue : -1);
+    const catB = b.category !== undefined ? b.category : (b.rankValue !== undefined ? b.rankValue : -1);
+    if (catA !== catB) return catA - catB;
+
+    const tbA = a.tieBreakers || [];
+    const tbB = b.tieBreakers || [];
+    const maxLen = Math.max(tbA.length, tbB.length);
+    for (let i = 0; i < maxLen; i++) {
+      const valA = tbA[i] !== undefined ? tbA[i] : 0;
+      const valB = tbB[i] !== undefined ? tbB[i] : 0;
+      if (valA !== valB) return valA - valB;
     }
     return 0;
   }
