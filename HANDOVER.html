@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fake Poker - Project Handover Document</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-gold: #f59e0b;
+      --accent-red: #ef4444;
+      --code-bg: #0b1120;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 32px 16px;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+    .badge-green { background: #064e3b; color: #a7f3d0; border: 1px solid #059669; }
+    .badge-blue { background: #0c4a6e; color: #bae6fd; border: 1px solid #0284c7; }
+    .badge-gold { background: #78350f; color: #fef3c7; border: 1px solid #d97706; }
+    h1 {
+      font-size: 2.2rem;
+      margin: 12px 0 6px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .meta-bar {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+    h2 {
+      font-size: 1.4rem;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin: 32px 0 16px;
+    }
+    h3 {
+      font-size: 1.1rem;
+      color: #e2e8f0;
+      margin: 20px 0 8px;
+    }
+    p, ul, ol {
+      margin-bottom: 14px;
+      color: #cbd5e1;
+    }
+    ul, ol {
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      color: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #1e293b;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th {
+      background: #1e293b;
+      color: #f8fafc;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: rgba(30, 41, 59, 0.4);
+    }
+    .status-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .status-ok { background: #064e3b; color: #6ee7b7; }
+    .status-warn { background: #78350f; color: #fde68a; }
+    footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <span class="badge badge-green">Status: Active & Deployed</span>
+        <span class="badge badge-blue">Multiplayer Ready</span>
+        <span class="badge badge-gold">Cloudflare Durable Objects</span>
+      </div>
+      <h1>♠ Fake Poker — Project Handover Document</h1>
+      <div class="meta-bar">
+        <strong>Repository:</strong> <a href="https://github.com/yhngong/fake-poker" target="_blank">github.com/yhngong/fake-poker</a> • 
+        <strong>Branch:</strong> <code>main</code> • 
+        <strong>Local Path:</strong> <code>/Users/yoletgong/Documents/github/fake-poker</code>
+      </div>
+    </header>
+
+    <h2>1. Executive Summary</h2>
+    <p>
+      <strong>Fake Poker</strong> is a responsive Texas Hold'em web game built with zero external runtime dependencies (vanilla HTML5, CSS3, ES6 JavaScript).
+      The project supports dual execution:
+    </p>
+    <ul>
+      <li><strong>100% Offline Single-Player:</strong> Runs fully client-side against 3 adaptive AI opponents (Bob, Alice, and Charlie) with Web Audio sound effects. Ideal for GitHub Pages.</li>
+      <li><strong>Online Multiplayer:</strong> Powered by Cloudflare Workers and Durable Objects (<code>PokerRoom</code>). Supports real-time authoritative Texas Hold'em across rooms (<code>?room=&lt;code&gt;</code>) with private hole cards, live chat, dealer bribes, and bot fill-in for empty seats.</li>
+    </ul>
+
+    <h2>2. Repository Structure & Key Files</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Path</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>app.js</code></td>
+          <td>Frontend Engine</td>
+          <td>Core game logic, HandEvaluator, SoundManager, DOM rendering, and <code>MultiplayerClient</code> WebSocket handler.</td>
+        </tr>
+        <tr>
+          <td><code>index.html</code></td>
+          <td>Frontend UI</td>
+          <td>Table felt layout, 4 seats, betting controls, Bribe Dealer modal, and Cloudflare Multiplayer Lobby dialog.</td>
+        </tr>
+        <tr>
+          <td><code>style.css</code></td>
+          <td>Styles</td>
+          <td>Modern solid color casino theme (non-glow), responsive seating, avatar accessory overlays, and modal styling.</td>
+        </tr>
+        <tr>
+          <td><code>worker/index.js</code></td>
+          <td>Cloudflare Worker</td>
+          <td>Authoritative <code>PokerRoom</code> Durable Object, WebSocket router, hand evaluation, pot splitting, bot automation, and bribes.</td>
+        </tr>
+        <tr>
+          <td><code>wrangler.toml</code></td>
+          <td>Cloudflare Config</td>
+          <td>Configures <code>fake-poker-backend</code>, binding <code>POKER_ROOM</code> Durable Object and <code>[assets] directory = "public"</code>.</td>
+        </tr>
+        <tr>
+          <td><code>public/</code></td>
+          <td>Static Assets</td>
+          <td>Symlinked <code>index.html</code>, <code>style.css</code>, <code>app.js</code> for unified frontend serving on <code>http://localhost:8787</code>.</td>
+        </tr>
+        <tr>
+          <td><code>package.json</code></td>
+          <td>NPM Config</td>
+          <td>Project scripts: <code>npm run dev</code> (Wrangler dev) and <code>npm run deploy</code> (Wrangler deploy). Includes <code>wrangler@4.131.1</code>.</td>
+        </tr>
+        <tr>
+          <td><code>.assetsignore</code></td>
+          <td>Asset Ignore</td>
+          <td>Excludes <code>node_modules/</code>, <code>.wrangler/</code>, <code>worker/</code>, and config files from Cloudflare static asset uploads.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Core Systems & Architecture</h2>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">🃏 Authoritative Hand Evaluator</div>
+        <p>Evaluates 7-card combinations down to best 5-card holding with full category and tie-breaker sorting:</p>
+        <ul>
+          <li>High Card up to Royal Flush</li>
+          <li>Ace-low Wheel Straight (<code>A-2-3-4-5</code>) & Broadway (<code>10-J-Q-K-A</code>)</li>
+          <li>Handles incomplete hands safely during pre-flop and flop</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🌐 Cloudflare Durable Objects</div>
+        <p>Each room code (e.g. <code>?room=table-777</code>) binds to an isolated <code>PokerRoom</code> instance:</p>
+        <ul>
+          <li>Authoritative deck, blinds, turns, split pots, and timeouts</li>
+          <li>Private cards: Each client receives only their own hole cards</li>
+          <li>Empty seats automatically staffed by bots</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🤫 Dealer Bribe System</div>
+        <p>Interactive modal and chat commands (<code>##deal</code>, <code>##peek</code>):</p>
+        <ul>
+          <li><strong>👁️ Peek Cards ($250):</strong> Reveals opponents' cards face-up.</li>
+          <li><strong>🤝 Specific Card ($500):</strong> Picker forces exact card on board or river.</li>
+          <li><strong>✨ Best Card ($750):</strong> Algorithmic solver deals optimal card.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👤 Persona & Avatars</div>
+        <p>Consistent player bust avatar (<code>👤</code>) with head accessories:</p>
+        <ul>
+          <li><strong>Bob:</strong> Fedora <code>🎩</code></li>
+          <li><strong>Alice:</strong> Crown <code>👑</code></li>
+          <li><strong>Charlie:</strong> Sunglasses <code>🕶️</code></li>
+          <li><strong>Player / Human:</strong> Cap <code>🧢</code> (customizable in lobby)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>4. WebSocket Protocol Specification</h2>
+    <p>Bidirectional JSON messaging over <code>/ws?room=&lt;room_code&gt;</code>:</p>
+
+    <h3>Client ➔ Server:</h3>
+    <pre><code>// 1. Join Room
+{ "action": "join", "name": "Alex", "accessory": "👑" }
+
+// 2. Player Betting Action
+{ "action": "player_action", "type": "fold" | "check" | "call" | "raise", "amount": 80 }
+
+// 3. Dealer Bribes
+{ "action": "bribe", "bribeType": "peek" }
+{ "action": "bribe", "bribeType": "best_card" }
+{ "action": "bribe", "bribeType": "specific_card", "card": { "rank": "A", "suit": "♠" } }
+
+// 4. Chat & Deal Next Hand
+{ "action": "chat", "text": "Nice bluff!" }
+{ "action": "start_hand" }</code></pre>
+
+    <h3>Server ➔ Client:</h3>
+    <pre><code>// 1. Welcome (assigns seat index 0..3)
+{ "type": "welcome", "seatIdx": 0, "sessionId": "session_...", "name": "Alex", "accessory": "👑", "chips": 1000 }
+
+// 2. Authoritative Room State Broadcast
+{
+  "type": "room_state",
+  "phase": "PRE-FLOP" | "FLOP" | "TURN" | "RIVER" | "SHOWDOWN" | "IDLE",
+  "pot": 60,
+  "currentBet": 20,
+  "dealerIdx": 1,
+  "currentTurnIdx": 0,
+  "communityCards": [{ "suit": "♠", "color": "black", "rank": "A", "val": 14 }],
+  "seats": [
+    { "id": 0, "name": "Alex", "accessory": "👑", "isHuman": true, "chips": 980, "currentBet": 20, "folded": false, "allIn": false, "holeCards": [{ "rank": "K", "suit": "♠", ... }] },
+    { "id": 1, "name": "Bob", "accessory": "🎩", "isHuman": false, "chips": 1000, "currentBet": 0, "folded": false, "allIn": false, "holeCards": [{ "hidden": true }] }
+  ],
+  "yourSeatIdx": 0
+}
+
+// 3. Notifications & Bribe Confirmations
+{ "type": "bribe_success", "bribeType": "peek" | "best_card" | "specific_card", "card": { ... } }
+{ "type": "chat", "sender": "Alice", "text": "Talk is cheap, show some chips!", "className": "chat-bot" }
+{ "type": "log", "text": "🃏 Hand #4 started!", "logType": "system" }</code></pre>
+
+    <h2>5. Critical Gotchas & Bugfixes Resolved</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Issue</th>
+          <th>Root Cause</th>
+          <th>Resolution</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Asset Too Large (86.1 MiB)</strong></td>
+          <td><code>[assets] directory = "."</code> made Wrangler scan <code>node_modules/workerd</code> binary.</td>
+          <td>Created <code>.assetsignore</code> and mapped static assets cleanly to <code>public/</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Live-Reload Disconnect Loop</strong></td>
+          <td>Miniflare wrote to <code>.wrangler/state/v3/.../metadata.sqlite-shm</code>, which triggered Wrangler's root asset watcher, rebooting workerd and dropping all WebSockets.</td>
+          <td>Isolated static assets into <code>public/</code> folder, separating them from <code>.wrangler/</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Pre-Flop Bribe TypeError</strong></td>
+          <td><code>findBestNextCard</code> called <code>evaluate7</code> with only 3 cards during pre-flop; incomplete hand had <code>undefined</code> tieBreakers, crashing <code>compare</code>.</td>
+          <td>Padded candidate board to 5 cards with remaining deck candidates; made <code>HandEvaluator.compare</code> null-safe.</td>
+        </tr>
+        <tr>
+          <td><strong>Chrome DevTools 404</strong></td>
+          <td>Chrome DevTools automatically probes <code>/.well-known/appspecific/com.chrome.devtools.json</code>.</td>
+          <td>Added silent HTTP 204 handler in Worker.</td>
+        </tr>
+        <tr>
+          <td><strong>Missing Favicon 404</strong></td>
+          <td>Browsers requested <code>/favicon.ico</code> causing 404 logs.</td>
+          <td>Added SVG spade icon (<code>♠</code>) response on <code>/favicon.ico</code> and in <code>index.html</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. Developer Quickstart & Run Commands</h2>
+
+    <h3>Local Development (Unified Frontend + Backend):</h3>
+    <pre><code># 1. Ensure nvm/node is in your shell
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# 2. Run local Cloudflare Worker & WebSockets
+npm run dev
+
+# 3. Open in browser:
+# http://localhost:8787 (serves both UI and ws://localhost:8787/ws)</code></pre>
+
+    <h3>Production Cloudflare Worker Deployment:</h3>
+    <pre><code># Login to Cloudflare account
+npx wrangler login
+
+# Deploy Durable Object Worker
+npm run deploy</code></pre>
+
+    <h3>Standalone Static Frontend (GitHub Pages or Python):</h3>
+    <pre><code># Run local static server
+python3 -m http.server 8000
+# Visit http://localhost:8000 (enter deployed Worker wss:// URL in Online dialog)</code></pre>
+
+    <h2>7. Next Steps & Recommended Roadmap</h2>
+    <ol>
+      <li><strong>Custom Chip Buy-Ins / Rebuy Options:</strong> Allow human players to rebuy or customize starting chip stacks via room options.</li>
+      <li><strong>Side Pots Engine:</strong> Further expand split pot logic for multi-way all-ins with uneven chip stacks.</li>
+      <li><strong>Room Persistence:</strong> Optionally persist room history or leaderboard stats using Durable Object SQLite storage.</li>
+      <li><strong>Sound Customization:</strong> Add volume slider in settings modal.</li>
+    </ol>
+
+    <footer>
+      Fake Poker Handover Document • Prepared on September 13, 2026 • Commit <code>ea383e6</code>
+    </footer>
+  </div>
+</body>
+</html>
